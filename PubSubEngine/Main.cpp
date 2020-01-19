@@ -163,7 +163,7 @@ int  main(void)
 					bool temp = true;
 					printf("klinet zeli da posalje : %d.\n", *velicinaPor);
 					//// petlja za stalno slanje poruke 
-					while (temp) {
+				
 
 
 
@@ -180,12 +180,14 @@ int  main(void)
 						}
 						else
 						{
-							printf("recv failed with error: %d\n", WSAGetLastError());
+							printf("1 recv failed with error: %d\n", WSAGetLastError());
+							
 							closesocket(acceptedSocket);
 						}
+						//Sleep(1022);
 
 
-					}
+					
 				}
 				else if (iResult == 0)
 				{
@@ -196,11 +198,12 @@ int  main(void)
 				else
 				{
 					// there was an error during recv
-					printf("recv failed with error: %d\n", WSAGetLastError());
+					printf(" 2recv failed with error: %d\n", WSAGetLastError());
 					closesocket(acceptedSocket);
 				}
 			}
 		}
+	
 	} while (1);
 
 
