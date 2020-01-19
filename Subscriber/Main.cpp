@@ -15,14 +15,16 @@
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG "27018"
+#define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
 
 bool InitializeWindowsSockets();
 
-int  main(void)
+void Subscribe(const char* addres);
+
+int  main(int argc, char** argv)
 {
 	// Socket used for listening for new clients 
 	SOCKET listenSocket = INVALID_SOCKET;
-;
 	// Socket used for communication with client
 	SOCKET acceptedSocket = INVALID_SOCKET;
 	// variable used to store function return value
@@ -105,7 +107,7 @@ int  main(void)
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
-
+	Subscribe(argv[1]);
 	do
 	{
 		// konektovanje 
@@ -225,3 +227,74 @@ bool InitializeWindowsSockets()
 	}
 	return true;
 }
+
+
+void Subscribe( const char * addres) {
+	// socket used to communicate with server
+	SOCKET connectSocket = INVALID_SOCKET;
+	// variable used to store function return value
+	int iResult;
+	// message to send
+	const char* messageToSend = "this is a test SUBSCRIBE";
+
+
+	if (InitializeWindowsSockets() == false)
+	{
+		// we won't log anything since it will be logged
+		// by InitializeWindowsSockets() function
+		return;
+	}
+
+	// create a socket
+	connectSocket = socket(AF_INET,
+		SOCK_STREAM,
+		IPPROTO_TCP);
+
+	if (connectSocket == INVALID_SOCKET)
+	{
+		printf("socket failed with error: %ld\n", WSAGetLastError());
+		WSACleanup();
+		return;
+	}
+
+	// create and initialize address structure
+	sockaddr_in serverAddress;
+	serverAddress.sin_family = AF_INET;
+	serverAddress.sin_addr.s_addr = inet_addr(addres);
+	serverAddress.sin_port = htons(DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND);
+
+	// connect to server specified in serverAddress and socket connectSocket
+	if (connect(connectSocket, (SOCKADDR*)& serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
+	{
+		printf("Unable to connect to server.\n");
+		closesocket(connectSocket);
+		WSACleanup();
+	}
+
+	
+	
+		// Send an prepared message with null terminator included
+	int duzina = strlen(messageToSend);
+	char* poruka = (char*)malloc(duzina + 4);
+	memcpy(poruka, &duzina, 4);
+	memcpy(poruka + 4, messageToSend, duzina);
+	iResult = send(connectSocket, poruka, duzina + 4, 0);
+
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("send failed with error: %d\n", WSAGetLastError());
+		closesocket(connectSocket);
+		WSACleanup();
+		return;
+	}
+
+	printf("Bytes Sent: %ld\n", iResult);
+	
+	// cleanup
+	closesocket(connectSocket);
+	WSACleanup();
+
+	return;
+}
+
+
