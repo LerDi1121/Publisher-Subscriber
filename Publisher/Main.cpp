@@ -1,11 +1,15 @@
 #define WIN32_LEAN_AND_MEAN
-
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
+
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "Mswsock.lib")
+#pragma comment(lib, "AdvApi32.lib")
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT 27016
@@ -21,7 +25,7 @@ int __cdecl main(int argc, char **argv)
 	// variable used to store function return value
 	int iResult;
 	// message to send
-	char *messageToSend = "this is a test";
+	const char *messageToSend = "this is a test";
 
 	// Validate the parameters
 	if (argc != 2)
