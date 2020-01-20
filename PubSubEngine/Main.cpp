@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
+#include "Enums.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
@@ -22,6 +23,7 @@ bool InitializeWindowsSockets();
 
 int  main(int argc, char **argv)
 {
+	
 	// Socket used for listening for new clients 
 	SOCKET listenSocketForPub = INVALID_SOCKET;
 	SOCKET listenSocketForSub = INVALID_SOCKET;
@@ -228,7 +230,7 @@ int  main(int argc, char **argv)
 
 					char* Poruka = (char*)malloc(*velicinaPor);
 					bool temp = true;
-					printf("klinet zeli da posalje : %d.\n", *velicinaPor);
+					printf("klinet sub zeli da posalje : %d.\n", *velicinaPor);
 					iResult = recv(acceptedSocket2, Poruka, *velicinaPor, 0);
 					if (iResult > 0)
 					{
@@ -290,6 +292,7 @@ int  main(int argc, char **argv)
 					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
 						if (iResult > 0)
 						{
+				
 							Poruka[iResult] = '\0';
 							printf("klinet je poslao  : %s.\n", Poruka);
 

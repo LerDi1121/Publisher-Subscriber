@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
+#include "Enums.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
@@ -17,6 +18,8 @@
 // Initializes WinSock2 library
 // Returns true if succeeded, false otherwise.
 bool InitializeWindowsSockets();
+bool Connect(SOCKET conSoc );
+bool Publish(void *topic, void * type, const char * message, SOCKET conSoc);
 
 int __cdecl main(int argc, char **argv)
 {
@@ -66,30 +69,23 @@ int __cdecl main(int argc, char **argv)
 		closesocket(connectSocket);
 		WSACleanup();
 	}
+	if (Connect(connectSocket))
+		while (1) {
+			Topic t = Status;
+			TypeTopic tst = SWG;
 
-	while (1) {
-		///**** stalno slanje poruke 
-		   // Send an prepared message with null terminator included
-		int duzina = strlen(messageToSend);
-		char *poruka = (char *)malloc(duzina + 4);
-		memcpy(poruka, &duzina, 4);
-		memcpy(poruka + 4, messageToSend, duzina);
-		iResult = send(connectSocket, poruka, duzina + 4, 0);
+			{
 
-		if (iResult == SOCKET_ERROR)
-		{
-			printf("send failed with error: %d\n", WSAGetLastError());
-			closesocket(connectSocket);
-			WSACleanup();
-			return 1;
+			};;
+			Publish((void *) t, (void *) tst, messageToSend, connectSocket);
+			Sleep(1000);
 		}
-
-		printf("Bytes Sent: %ld\n", iResult);
-		Sleep(1000);
-	}
+	else
+		printf(" Greska prilikom konektovanja");
 	// cleanup
 	closesocket(connectSocket);
 	WSACleanup();
+	getchar();
 
 	return 0;
 }
@@ -105,3 +101,49 @@ bool InitializeWindowsSockets()
 	}
 	return true;
 }
+bool Publish(void *topic, void * type, const char * message, SOCKET conSoc)
+{
+	
+	int duzina = strlen(message);
+	int TopicSize = sizeof(Topic);
+	int TypeSize = sizeof(TypeTopic);
+
+	char *poruka = (char *)malloc(duzina + 4 +TopicSize +TypeSize);
+	memcpy(poruka, &duzina, 4);
+	memcpy(poruka +4, &topic, TopicSize);
+	memcpy(poruka + 4+ TopicSize, &type, TypeSize);
+	memcpy(poruka + 4+ TopicSize+ TypeSize, message, duzina);
+//	memcpy(poruka + 4, message, duzina);
+	int iResult = send(conSoc, poruka, duzina + 4 + TypeSize+ TopicSize, 0);
+
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("send failed with error: %d\n", WSAGetLastError());
+		closesocket(conSoc);
+		return false;
+	}
+
+	printf("Bytes Sent: %ld\n", iResult);
+	return true;
+
+}
+bool Connect(SOCKET conSoc)
+{
+	// Send an prepared message with null terminator included'
+	const char *messageToSend = "Connect Publisher";
+	int duzina = strlen(messageToSend);
+	char *poruka = (char *)malloc(duzina + 4);
+	memcpy(poruka, &duzina, 4);
+	memcpy(poruka + 4, messageToSend, duzina);
+	int iResult = send(conSoc, poruka, duzina + 4, 0);
+
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("send failed with error: %d\n", WSAGetLastError());
+		closesocket(conSoc);
+		return false;
+	}
+	return true;
+
+}
+
