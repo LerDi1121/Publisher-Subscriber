@@ -69,18 +69,17 @@ int __cdecl main(int argc, char **argv)
 		closesocket(connectSocket);
 		WSACleanup();
 	}
-	if (Connect(connectSocket))
+//if (Connect(connectSocket))
 		while (1) {
 			Topic t = Status;
-			TypeTopic tst = SWG;
+			TypeTopic tst = MER;
 
-			{
-
-			};;
+			
 			Publish((void *) t, (void *) tst, messageToSend, connectSocket);
+
 			Sleep(1000);
 		}
-	else
+//else
 		printf(" Greska prilikom konektovanja");
 	// cleanup
 	closesocket(connectSocket);
@@ -103,18 +102,19 @@ bool InitializeWindowsSockets()
 }
 bool Publish(void *topic, void * type, const char * message, SOCKET conSoc)
 {
-	
-	int duzina = strlen(message);
 	int TopicSize = sizeof(Topic);
 	int TypeSize = sizeof(TypeTopic);
 
-	char *poruka = (char *)malloc(duzina + 4 +TopicSize +TypeSize);
-	memcpy(poruka, &duzina, 4);
+	int duzinaUkupnePoruke = strlen(message) + TopicSize+ TypeSize;
+	int duzinaTexta = strlen(message);
+
+	char *poruka = (char *)malloc(duzinaUkupnePoruke);
+	memcpy(poruka, &duzinaUkupnePoruke, 4);
 	memcpy(poruka +4, &topic, TopicSize);
 	memcpy(poruka + 4+ TopicSize, &type, TypeSize);
-	memcpy(poruka + 4+ TopicSize+ TypeSize, message, duzina);
+	memcpy(poruka + 4+ TopicSize+ TypeSize, message, duzinaTexta);
 //	memcpy(poruka + 4, message, duzina);
-	int iResult = send(conSoc, poruka, duzina + 4 + TypeSize+ TopicSize, 0);
+	int iResult = send(conSoc, poruka, duzinaUkupnePoruke+4, 0);
 
 	if (iResult == SOCKET_ERROR)
 	{

@@ -20,7 +20,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Enums.h">
+    <ClInclude Include="EnumsEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
