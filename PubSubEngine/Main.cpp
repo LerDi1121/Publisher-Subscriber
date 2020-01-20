@@ -20,11 +20,27 @@
 #define DEFAULT_PORT_FOR_PUB "27016"
 #define DEFAULT_PORT_SUBSCRIBER 27018
 
+typedef struct node {
+	HANDLE value;
+	struct node* next;
+} node_t;
+
+typedef struct node_t_socket {
+	SOCKET value;
+	struct node_t_socket* next;
+} node_t_socket;
+
 bool InitializeWindowsSockets();
+DWORD WINAPI RcvMessage(LPVOID param);
+void AddToList(node_t** head, HANDLE value);
+void AddSocketToList(node_t_socket** head, SOCKET value);
+SOCKET*  CreateAceptSocket(SOCKET Listen);
 
 int  main(int argc, char **argv)
 {
-	
+
+	node_t* listThread = NULL;
+	node_t_socket *listSockets = NULL;
 
 	SOCKET listenSocketForPub = INVALID_SOCKET;
 
@@ -128,18 +144,14 @@ int  main(int argc, char **argv)
 		}
 		else if(iResult!=0) {
 			if (FD_ISSET(listenSocketForPub, &set)) {
-				acceptedSocket = accept(listenSocketForPub, NULL, NULL);
-				/* kada dobijemo zahtev onda pravimo accepted socket*/
-				if (acceptedSocket == INVALID_SOCKET)
-				{
-					printf("accept failed with error: %d\n", WSAGetLastError());
-					closesocket(listenSocketForPub);
-					WSACleanup();
-					return 1;
-				}
+				acceptedSocket = *CreateAceptSocket(listenSocketForPub);
+				//AddSocketToList(&listSockets, acceptedSocket);
+				DWORD print1ID;
+				HANDLE Thread;
 
-				nonBlockingMode = 1;
-				iResult = ioctlsocket(acceptedSocket, FIONBIO, &nonBlockingMode);
+				Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
+				AddToList(&listThread, Thread);
+
 			//	break;
 			}
 			
@@ -147,132 +159,7 @@ int  main(int argc, char **argv)
 		///
 
 
-		FD_SET(acceptedSocket, &set);
-
-		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
-
-	
-		if (iResult == SOCKET_ERROR) {
-			//desila se greska prilikom poziva funkcije
-		}
-		else if(iResult!=0) {
-			if (FD_ISSET(acceptedSocket, &set)) {
-				char someBuff[4];
-				iResult = recv(acceptedSocket, someBuff, 4, 0);
-				if (iResult > 0)
-				{
-					int* velicinaPor = (int*)someBuff;
-
-					char* Poruka = (char*)malloc(*velicinaPor);
-					bool temp = true;
-					printf("klinet zeli da posalje : %d.\n", *velicinaPor);
-					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
-						if (iResult > 0)
-						{
-							Topic t = (Topic ) * ((int *) Poruka) ;
-							
-							TypeTopic tt = (TypeTopic) *((int *) (Poruka +4));
-							
-							
-							int MessSize = *velicinaPor - (sizeof(Topic) + sizeof(TypeTopic));
-							char * Message = (char *)malloc(MessSize);
-							Poruka = Poruka + sizeof(Topic) + sizeof(TypeTopic);
-
-							memcpy(Message, (void*)Poruka ,MessSize );
-				
-							Message[MessSize] = '\0';
-
-							printf("klinet je poslao  : %s.\n", Message);
-							printf("Topic : %d", t);
-							printf("Topic Type : %d", tt);
-							
-
-							/*
-							////slanje poruke na sub
-							SOCKET connectSocket = INVALID_SOCKET;
-							connectSocket = socket(AF_INET,
-								SOCK_STREAM,
-								IPPROTO_TCP);
-
-							if (connectSocket == INVALID_SOCKET)
-							{
-								printf("socket failed with error: %ld\n", WSAGetLastError());
-								//WSACleanup();
-								
-							}
-
-							// create and initialize address structure
-							sockaddr_in serverAddress;
-							serverAddress.sin_family = AF_INET;
-							serverAddress.sin_addr.s_addr = inet_addr(argv[1]);
-							serverAddress.sin_port = htons(DEFAULT_PORT_SUBSCRIBER);
-							// connect to server specified in serverAddress and socket connectSocket
-							if (connect(connectSocket, (SOCKADDR*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
-							{
-								
-								printf("Unable to connect to server.\n");
-								closesocket(connectSocket);
-								//WSACleanup();
-							}
-					
-							printf("USlanje poruke na sub.\n");
-								int duzina = strlen(Poruka);
-								char *poruka = (char *)malloc(duzina + 4);
-								memcpy(poruka, &duzina, 4);
-								memcpy(poruka + 4, Poruka, duzina);
-								iResult = send(connectSocket, poruka, duzina + 4, 0);
-
-								if (iResult == SOCKET_ERROR)
-								{
-									printf("send failed with error: %d\n", WSAGetLastError());
-									closesocket(connectSocket);
-									WSACleanup();
-									return 1;
-								}
-
-								printf("Bytes Sent: %ld\n", iResult);
-								Sleep(1000);
-							
-							// cleanup
-							//closesocket(connectSocket);
-							//WSACleanup();
-
-								*/
-
-
-
-							//// end slanje poruke na sub
-						}
-						else if (iResult == 0)
-						{
-							printf("Connection with client closed.\n");
-							closesocket(acceptedSocket);
-						}
-						else
-						{
-							printf("1 recv failed with error: %d\n", WSAGetLastError());
-							
-							closesocket(acceptedSocket);
-						}
-						//Sleep(1022);
-
-
-					
-				}
-				else if (iResult == 0)
-				{
-					// connection was closed gracefully
-					printf("Connection with client closed.\n");
-					closesocket(acceptedSocket);
-				}
-				else
-				{
-					// there was an error during recv
-					printf(" 2recv failed with error: %d\n", WSAGetLastError());
-					closesocket(acceptedSocket);
-				}
-			}
-		}
+		
 
 	} while (1);
 	
@@ -306,4 +193,155 @@ bool InitializeWindowsSockets()
 		return false;
 	}
 	return true;
+}
+
+DWORD WINAPI RcvMessage(LPVOID param)
+{
+	SOCKET acceptedSocket = *(SOCKET *)param;
+	FD_SET set;
+	FD_SET setSub;
+	timeval timeVal;
+	timeVal.tv_sec = 1;
+	timeVal.tv_usec = 0;
+
+
+		FD_ZERO(&set);
+	while (true)
+	{
+		FD_SET(acceptedSocket, &set);
+
+		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
+
+
+		if (iResult == SOCKET_ERROR) {
+			//desila se greska prilikom poziva funkcije
+		}
+		else if (iResult != 0) {
+			if (FD_ISSET(acceptedSocket, &set)) {
+				printf("Ulaz u funkciju \n****\n\n");
+				
+				char someBuff[4];
+				int iResult = recv(acceptedSocket, someBuff, 4, 0);
+				if (iResult > 0)
+				{
+					int* velicinaPor = (int*)someBuff;
+
+					char* Poruka = (char*)malloc(*velicinaPor);
+					bool temp = true;
+					printf("klinet zeli da posalje : %d.\n", *velicinaPor);
+					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
+					if (iResult > 0)
+					{
+						Topic t = (Topic) * ((int *)Poruka);
+
+						TypeTopic tt = (TypeTopic) *((int *)(Poruka + 4));
+
+
+						int MessSize = *velicinaPor - (sizeof(Topic) + sizeof(TypeTopic));
+						char * Message = (char *)malloc(MessSize);
+						Poruka = Poruka + sizeof(Topic) + sizeof(TypeTopic);
+
+						memcpy(Message, (void*)Poruka, MessSize);
+
+						Message[MessSize] = '\0';
+
+						printf("klinet je poslao  : %s.\n", Message);
+						printf("Topic : %d \n", t);
+						printf("Topic Type : %d\n ", tt);
+					}
+					else if (iResult == 0)
+					{
+						printf("Connection with client closed.\n");
+						closesocket(acceptedSocket);
+						return false;
+					}
+					else
+					{
+						printf("1 recv failed with error: %d\n", WSAGetLastError());
+
+						closesocket(acceptedSocket);
+						return false;
+					}
+
+				}
+				else if (iResult == 0)
+				{
+					// connection was closed gracefully
+					printf("Connection with client closed.\n");
+					closesocket(acceptedSocket);
+					return false;
+				}
+				else
+				{
+					// there was an error during recv
+					printf(" 2recv failed with error: %d\n", WSAGetLastError());
+					closesocket(acceptedSocket);
+					return false;
+				}
+
+
+			}
+		}
+	}
+	//return true;
+}
+SOCKET * CreateAceptSocket(SOCKET  listenSocket)
+{
+	SOCKET * acceptedSocket = (SOCKET *)malloc(sizeof(SOCKET));
+	*acceptedSocket = accept(listenSocket, NULL, NULL);
+	/* kada dobijemo zahtev onda pravimo accepted socket*/
+	if (*acceptedSocket == INVALID_SOCKET)
+	{
+		printf("accept failed with error: %d\n", WSAGetLastError());
+		closesocket(listenSocket);
+		WSACleanup();
+		
+	}
+
+	unsigned long int nonBlockingMode = 1;
+	int iResult = ioctlsocket(*acceptedSocket, FIONBIO, &nonBlockingMode);
+	return acceptedSocket;
+}
+
+void AddSocketToList(node_t_socket** head, SOCKET value)
+{
+	if ((*head) == NULL)
+	{
+		(*head) = (node_t_socket*)malloc(sizeof(node_t_socket));
+		(*head)->value = value;
+		(*head)->next = NULL;
+	}
+	else
+	{
+		node_t_socket * current = (*head);
+		while (current->next != NULL) {
+			current = current->next;
+		}
+
+		current->next = (node_t_socket*)malloc(sizeof(node_t_socket));;
+		current = current->next;
+		current->value = value;
+		current->next = NULL;
+	}
+}
+void AddToList(node_t** head, HANDLE value)
+{
+	if ((*head) == NULL)
+	{
+		(*head) = (node_t*)malloc(sizeof(node_t));
+		(*head)->value = value;
+		(*head)->next = NULL;
+	}
+	else
+	{
+		node_t * current = (*head);
+		while (current->next != NULL) {
+			current = current->next;
+		}
+
+		current->next = (node_t*)malloc(sizeof(node_t));;
+		current = current->next;
+		current->value = value;
+		current->next = NULL;
+	}
 }
