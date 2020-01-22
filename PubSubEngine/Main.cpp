@@ -34,12 +34,19 @@ typedef struct node_t_socket {
 	struct node_t_socket* next;
 } node_t_socket;
 
+typedef struct data_for_thread {
+	SOCKET *socket;
+	message_queue_t * msgQueue;
+
+}data_for_thread;
+
 bool InitializeWindowsSockets();
 DWORD WINAPI RcvMessage(LPVOID param);
 void AddToList(node_t** head, HANDLE value);
 void AddSocketToList(node_t_socket** head, SOCKET value);
 SOCKET* CreateAceptSocket(SOCKET Listen);
 void Enqueue(message_queue_t** head, char* msg, int msg_size);
+void CreateQueue(message_queue ** head);
 
 int  main(int argc, char** argv)
 {
@@ -51,6 +58,7 @@ int  main(int argc, char** argv)
 	SOCKET acceptedSocket = INVALID_SOCKET;
 
 	message_queue_t* msg_queue = NULL;
+	CreateQueue(&msg_queue);
 
 	int iResult;
 	// Buffer used for storing incoming data
@@ -152,8 +160,13 @@ int  main(int argc, char** argv)
 				//AddSocketToList(&listSockets, acceptedSocket);
 				DWORD print1ID;
 				HANDLE Thread;
-
-				Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
+				data_for_thread * temp= (data_for_thread*) malloc(sizeof(data_for_thread));
+				temp->socket = &acceptedSocket;
+				temp->msgQueue = msg_queue;
+				
+				printf("Pravljenje treda\n");
+			//	Thread = CreateThread(NULL, 0, *((LPTHREAD_START_ROUTINE*)temp), &acceptedSocket, 0, &print1ID);
+				Thread = CreateThread(NULL, 0, &RcvMessage, &temp, 0, &print1ID);
 				AddToList(&listThread, Thread);
 
 				//	break;
@@ -195,7 +208,12 @@ bool InitializeWindowsSockets()
 
 DWORD WINAPI RcvMessage(LPVOID param)
 {
-	SOCKET acceptedSocket = *(SOCKET*)param;
+	printf("ulazak\n");
+	data_for_thread*  temp = ((data_for_thread*)param);
+	printf("konvertovanje\n");
+	SOCKET acceptedSocket =*( temp->socket);
+	message_queue *msg_queue = temp->msgQueue;
+	printf("dodela\n");
 	FD_SET set;
 	FD_SET setSub;
 	timeval timeVal;
@@ -210,11 +228,12 @@ DWORD WINAPI RcvMessage(LPVOID param)
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 
 		if (iResult == SOCKET_ERROR) {
-			//desila se greska prilikom poziva funkcije
+			printf("SOCKET_ERROR");
+			continue;
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(acceptedSocket, &set)) {
-				printf("Ulaz u funkciju \n****\n\n");
+			
 
 				char someBuff[4];
 				int iResult = recv(acceptedSocket, someBuff, 4, 0);
@@ -240,7 +259,7 @@ DWORD WINAPI RcvMessage(LPVOID param)
 
 						Message[MessSize] = '\0';
 
-						//Enqueue(&msg_queue, Message, MessSize);
+						Enqueue(&msg_queue, Message, MessSize);
 
 						printf("klinet je poslao  : %s.\n", Message);
 						printf("Topic : %d \n", t);
@@ -337,6 +356,16 @@ void AddToList(node_t** head, HANDLE value)
 		current->value = value;
 		current->next = NULL;
 	}
+}
+void CreateQueue(message_queue ** head)
+{
+	if ((*head) == NULL)
+	{
+		(*head) = (message_queue*)malloc(sizeof(message_queue));
+		(*head)->message = NULL;
+		(*head)->next = NULL;
+	}
+
 }
 
 void Enqueue(message_queue_t** head, char* msg, int msg_size) {
