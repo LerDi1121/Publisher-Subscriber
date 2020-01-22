@@ -14,11 +14,15 @@
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 
-
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT_FOR_SUB "27017"
 #define DEFAULT_PORT_FOR_PUB "27016"
 #define DEFAULT_PORT_SUBSCRIBER 27018
+
+typedef struct message_queue {
+	char* message;
+	struct message_queue* next;
+} message_queue_t;
 
 typedef struct node {
 	HANDLE value;
@@ -34,22 +38,24 @@ bool InitializeWindowsSockets();
 DWORD WINAPI RcvMessage(LPVOID param);
 void AddToList(node_t** head, HANDLE value);
 void AddSocketToList(node_t_socket** head, SOCKET value);
-SOCKET*  CreateAceptSocket(SOCKET Listen);
+SOCKET* CreateAceptSocket(SOCKET Listen);
+void Enqueue(message_queue_t** head, char* msg, int msg_size);
 
-int  main(int argc, char **argv)
+int  main(int argc, char** argv)
 {
-
 	node_t* listThread = NULL;
-	node_t_socket *listSockets = NULL;
+	node_t_socket* listSockets = NULL;
 
 	SOCKET listenSocketForPub = INVALID_SOCKET;
 
 	SOCKET acceptedSocket = INVALID_SOCKET;
 
+	message_queue_t* msg_queue = NULL;
+
 	int iResult;
 	// Buffer used for storing incoming data
 	char recvbuf[DEFAULT_BUFLEN];
-	
+
 	if (InitializeWindowsSockets() == false)
 	{
 		// we won't log anything since it will be logged
@@ -57,17 +63,16 @@ int  main(int argc, char **argv)
 		return 1;
 	}
 
-
 	// Prepare address information structures
-	addrinfo *resultingAddress = NULL;
-	addrinfo *resultingAddress2 = NULL;
+	addrinfo* resultingAddress = NULL;
+	addrinfo* resultingAddress2 = NULL;
 	addrinfo hints;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;       // IPv4 address
 	hints.ai_socktype = SOCK_STREAM; // Provide reliable data streaming
 	hints.ai_protocol = IPPROTO_TCP; // Use TCP protocol
-	hints.ai_flags = AI_PASSIVE;     // 
+	hints.ai_flags = AI_PASSIVE;     //
 
 	// Resolve the server address and port
 	iResult = getaddrinfo(NULL, DEFAULT_PORT_FOR_PUB, &hints, &resultingAddress);
@@ -91,7 +96,7 @@ int  main(int argc, char **argv)
 		return 1;
 	}
 
-	// Setup the TCP listening socket - bind port number and local address 
+	// Setup the TCP listening socket - bind port number and local address
 	// to socket
 	iResult = bind(listenSocketForPub, resultingAddress->ai_addr, (int)resultingAddress->ai_addrlen);
 	if (iResult == SOCKET_ERROR)
@@ -118,7 +123,7 @@ int  main(int argc, char **argv)
 		WSACleanup();
 		return 1;
 	}
-	iResult = ioctlsocket(acceptedSocket, FIONBIO, (u_long *)1);
+	iResult = ioctlsocket(acceptedSocket, FIONBIO, (u_long*)1);
 
 	printf("Server initialized, waiting for clients.\n");
 
@@ -132,17 +137,16 @@ int  main(int argc, char **argv)
 	/* primanje poruka*/
 	do
 	{
-		// konektovanje 
+		// konektovanje
 		FD_ZERO(&set);
 		FD_ZERO(&setSub);
 		FD_SET(listenSocketForPub, &set);
 
-		
 		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
 			//desila se greska prilikom poziva funkcije
 		}
-		else if(iResult!=0) {
+		else if (iResult != 0) {
 			if (FD_ISSET(listenSocketForPub, &set)) {
 				acceptedSocket = *CreateAceptSocket(listenSocketForPub);
 				//AddSocketToList(&listSockets, acceptedSocket);
@@ -152,17 +156,11 @@ int  main(int argc, char **argv)
 				Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
 				AddToList(&listThread, Thread);
 
-			//	break;
+				//	break;
 			}
-			
 		}
 		///
-
-
-		
-
 	} while (1);
-	
 
 	// shutdown the connection since we're done
 	iResult = shutdown(acceptedSocket, SD_SEND);
@@ -197,21 +195,19 @@ bool InitializeWindowsSockets()
 
 DWORD WINAPI RcvMessage(LPVOID param)
 {
-	SOCKET acceptedSocket = *(SOCKET *)param;
+	SOCKET acceptedSocket = *(SOCKET*)param;
 	FD_SET set;
 	FD_SET setSub;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
 
-
-		FD_ZERO(&set);
+	FD_ZERO(&set);
 	while (true)
 	{
 		FD_SET(acceptedSocket, &set);
 
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
-
 
 		if (iResult == SOCKET_ERROR) {
 			//desila se greska prilikom poziva funkcije
@@ -219,7 +215,7 @@ DWORD WINAPI RcvMessage(LPVOID param)
 		else if (iResult != 0) {
 			if (FD_ISSET(acceptedSocket, &set)) {
 				printf("Ulaz u funkciju \n****\n\n");
-				
+
 				char someBuff[4];
 				int iResult = recv(acceptedSocket, someBuff, 4, 0);
 				if (iResult > 0)
@@ -232,18 +228,19 @@ DWORD WINAPI RcvMessage(LPVOID param)
 					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
 					if (iResult > 0)
 					{
-						Topic t = (Topic) * ((int *)Poruka);
+						Topic t = (Topic) * ((int*)Poruka);
 
-						TypeTopic tt = (TypeTopic) *((int *)(Poruka + 4));
-
+						TypeTopic tt = (TypeTopic) * ((int*)(Poruka + 4));
 
 						int MessSize = *velicinaPor - (sizeof(Topic) + sizeof(TypeTopic));
-						char * Message = (char *)malloc(MessSize);
+						char* Message = (char*)malloc(MessSize);
 						Poruka = Poruka + sizeof(Topic) + sizeof(TypeTopic);
 
 						memcpy(Message, (void*)Poruka, MessSize);
 
 						Message[MessSize] = '\0';
+
+						//Enqueue(&msg_queue, Message, MessSize);
 
 						printf("klinet je poslao  : %s.\n", Message);
 						printf("Topic : %d \n", t);
@@ -262,7 +259,6 @@ DWORD WINAPI RcvMessage(LPVOID param)
 						closesocket(acceptedSocket);
 						return false;
 					}
-
 				}
 				else if (iResult == 0)
 				{
@@ -278,16 +274,14 @@ DWORD WINAPI RcvMessage(LPVOID param)
 					closesocket(acceptedSocket);
 					return false;
 				}
-
-
 			}
 		}
 	}
 	//return true;
 }
-SOCKET * CreateAceptSocket(SOCKET  listenSocket)
+SOCKET* CreateAceptSocket(SOCKET  listenSocket)
 {
-	SOCKET * acceptedSocket = (SOCKET *)malloc(sizeof(SOCKET));
+	SOCKET* acceptedSocket = (SOCKET*)malloc(sizeof(SOCKET));
 	*acceptedSocket = accept(listenSocket, NULL, NULL);
 	/* kada dobijemo zahtev onda pravimo accepted socket*/
 	if (*acceptedSocket == INVALID_SOCKET)
@@ -295,7 +289,6 @@ SOCKET * CreateAceptSocket(SOCKET  listenSocket)
 		printf("accept failed with error: %d\n", WSAGetLastError());
 		closesocket(listenSocket);
 		WSACleanup();
-		
 	}
 
 	unsigned long int nonBlockingMode = 1;
@@ -313,7 +306,7 @@ void AddSocketToList(node_t_socket** head, SOCKET value)
 	}
 	else
 	{
-		node_t_socket * current = (*head);
+		node_t_socket* current = (*head);
 		while (current->next != NULL) {
 			current = current->next;
 		}
@@ -334,7 +327,7 @@ void AddToList(node_t** head, HANDLE value)
 	}
 	else
 	{
-		node_t * current = (*head);
+		node_t* current = (*head);
 		while (current->next != NULL) {
 			current = current->next;
 		}
@@ -344,4 +337,15 @@ void AddToList(node_t** head, HANDLE value)
 		current->value = value;
 		current->next = NULL;
 	}
+}
+
+void Enqueue(message_queue_t** head, char* msg, int msg_size) {
+	message_queue_t* new_node;
+	new_node = (message_queue_t*)malloc(sizeof(message_queue_t));
+
+	new_node->message = (char*)malloc(msg_size);
+	memcpy(new_node->message, (void*)msg, msg_size);
+
+	new_node->next = *head;
+	*head = new_node;
 }
