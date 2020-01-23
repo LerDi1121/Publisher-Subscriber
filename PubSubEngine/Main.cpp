@@ -36,7 +36,7 @@ typedef struct node_t_socket {
 
 typedef struct data_for_thread {
 	SOCKET socket;
-	char * msgQueue;
+	char ** msgQueue;
 
 }data_for_thread;
 
@@ -45,7 +45,7 @@ DWORD WINAPI RcvMessage(LPVOID param);
 void AddToList(node_t** head, HANDLE value);
 void AddSocketToList(node_t_socket** head, SOCKET value);
 SOCKET* CreateAceptSocket(SOCKET Listen);
-void Enqueue( char* msg, int msg_size);
+void Enqueue(char** queue, char* msg, int msg_size);
 void CreateQueue();
 
 int  main(int argc, char** argv)
@@ -162,13 +162,14 @@ int  main(int argc, char** argv)
 				//AddSocketToList(&listSockets, acceptedSocket);
 				DWORD print1ID;
 				HANDLE Thread;
-				/*data_for_thread * temp= (data_for_thread*) malloc(sizeof(data_for_thread));
-				temp->socket = acceptedSocket;
-				temp->msgQueue = msg_queue;*/
+				data_for_thread  temp=*( (data_for_thread*) malloc(sizeof(data_for_thread)));
+				temp.socket = acceptedSocket;
+				temp.msgQueue = &msg_queue;
 				
 				printf("Pravljenje treda\n");
-			//	Thread = CreateThread(NULL, 0, *((LPTHREAD_START_ROUTINE*)temp), &acceptedSocket, 0, &print1ID);
-				Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
+			
+			//	Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
+				Thread = CreateThread(NULL, 0, &RcvMessage, &temp, 0, &print1ID);
 				AddToList(&listThread, Thread);
 
 				//	break;
@@ -210,7 +211,11 @@ bool InitializeWindowsSockets()
 
 DWORD WINAPI RcvMessage(LPVOID param)
 {
-	SOCKET acceptedSocket = *((SOCKET *)param);
+	//SOCKET acceptedSocket = *((SOCKET *)param);
+	data_for_thread temp = *((data_for_thread *)param);
+	SOCKET acceptedSocket = temp.socket;
+	char * msgQueue= *(temp.msgQueue);
+
 	FD_SET set;
 //	FD_SET setSub;
 	timeval timeVal;
@@ -257,7 +262,7 @@ DWORD WINAPI RcvMessage(LPVOID param)
 
 						Message[MessSize] = '\0';
 
-						Enqueue( start, *velicinaPor);
+						Enqueue(&msgQueue, start, *velicinaPor);
 
 					/*	printf("klinet je poslao  : %s.\n", Message);
 						printf("Topic : %d \n", t);
@@ -370,26 +375,26 @@ void CreateQueue()
 
 }
 
-void Enqueue( char* msg, int msg_size) {
-	int *lenght =(int *)msg_queue;
-	int *ukupno = (int* )(msg_queue+4);
+void Enqueue(char ** queue, char* msg, int msg_size) {
+	int *lenght =(int *)(*queue);
+	int *ukupno = (int* )((*queue) +4);
 	if (*lenght + msg_size > *ukupno)
 	{
 		//alociraj novu memoriju
 		char* newQueue = (char*)malloc((*ukupno) * 2);
 		*ukupno *= 2;
-		memcpy(newQueue, msg_queue, *lenght);
-		free(msg_queue);
-		msg_queue = newQueue;
+		memcpy(newQueue, (*queue), *lenght);
+		free((*queue));
+		(*queue) = newQueue;
 		printf("\n nova memorija  ***********\n");
 
-		int *lenght = (int *)msg_queue;
-		int *ukupno = (int*)(msg_queue + 4);
+		int *lenght = (int *)(*queue);
+		int *ukupno = (int*)((*queue) + 4);
 		char*message_for_queue = (char*)malloc(msg_size + 4);
 		memcpy(message_for_queue, &msg_size, 4);
 		memcpy(message_for_queue + 4, msg, msg_size);
 
-		memcpy(msg_queue + (*lenght) + 8, message_for_queue, msg_size + 4);
+		memcpy((*queue) + (*lenght) + 8, message_for_queue, msg_size + 4);
 		*lenght += (msg_size + 4);
 		printf("%d\n", *lenght);
 
@@ -401,7 +406,7 @@ void Enqueue( char* msg, int msg_size) {
 		memcpy(message_for_queue, &msg_size, 4);
 		memcpy(message_for_queue+4, msg, msg_size);
 		
-		memcpy(msg_queue+(*lenght)+8,message_for_queue,msg_size+4);
+		memcpy((*queue) +(*lenght)+8,message_for_queue,msg_size+4);
 		*lenght += (msg_size + 4);
 		printf("%d\n", *lenght);
 
