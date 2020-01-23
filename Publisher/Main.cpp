@@ -18,16 +18,14 @@
 // Initializes WinSock2 library
 // Returns true if succeeded, false otherwise.
 bool InitializeWindowsSockets();
-bool Connect(SOCKET conSoc );
-bool Publish(void *topic, void * type, const char * message, SOCKET conSoc);
+bool Connect(SOCKET conSoc);
+bool Publish(void* topic, void* type, const char* message, SOCKET conSoc);
 
-int __cdecl main(int argc, char **argv)
+int __cdecl main(int argc, char** argv)
 {
-
 	// socket used to communicate with server
 	SOCKET connectSocket = INVALID_SOCKET;
-
-	const char *messageToSend = "this is a test";
+	const char* messageToSend = "this is a test";
 
 	// Validate the parameters
 	if (argc != 2)
@@ -62,24 +60,23 @@ int __cdecl main(int argc, char **argv)
 	serverAddress.sin_port = htons(DEFAULT_PORT);
 
 	// connect to server specified in serverAddress and socket connectSocket
-	if (connect(connectSocket, (SOCKADDR*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
+	if (connect(connectSocket, (SOCKADDR*)& serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
 	{
 		printf("Unable to connect to server.\n");
 		closesocket(connectSocket);
 		WSACleanup();
 	}
-//if (Connect(connectSocket))
-		while (1) {
-			Topic t =Status;
-			TypeTopic tst = MER;
+	//if (Connect(connectSocket))
+	while (1) {
+		Topic topicTest = Status;
+		TypeTopic typeTest = MER;
 
-			
-			Publish((void *) t, (void *) tst, messageToSend, connectSocket);
+		Publish((void*)topicTest, (void*)typeTest, messageToSend, connectSocket);
 
-			Sleep(1000);
-		}
-//else
-		printf(" Greska prilikom konektovanja");
+		Sleep(1000);
+	}
+	//else
+	printf("Connect error.");
 	// cleanup
 	closesocket(connectSocket);
 	WSACleanup();
@@ -99,50 +96,50 @@ bool InitializeWindowsSockets()
 	}
 	return true;
 }
-bool Publish(void *topic, void * type, const char * message, SOCKET conSoc)
+bool Publish(void* topic, void* type, const char* message, SOCKET publishSocket)
 {
-	int TopicSize = sizeof(Topic);
-	int TypeSize = sizeof(TypeTopic);
+	int topicSize = sizeof(Topic);
+	int typeSize = sizeof(TypeTopic);
 
-	int duzinaUkupnePoruke = strlen(message) + TopicSize+ TypeSize;
-	int duzinaTexta = strlen(message);
+	int dataToSendSize = strlen(message) + topicSize + typeSize;
+	int messageSize = strlen(message);
 
-	char *poruka = (char *)malloc(duzinaUkupnePoruke);
-	memcpy(poruka, &duzinaUkupnePoruke, 4);
-	memcpy(poruka +4, &topic, TopicSize);
-	memcpy(poruka + 4+ TopicSize, &type, TypeSize);
-	memcpy(poruka + 4+ TopicSize+ TypeSize, message, duzinaTexta);
-//	memcpy(poruka + 4, message, duzina);
-	int iResult = send(conSoc, poruka, duzinaUkupnePoruke+4, 0);
+	char* dataToSend = (char*)malloc(dataToSendSize);
+
+	memcpy(dataToSend, &dataToSendSize, 4);
+	memcpy(dataToSend + 4, &topic, topicSize);
+	memcpy(dataToSend + 4 + topicSize, &type, typeSize);
+	memcpy(dataToSend + 4 + topicSize + typeSize, message, messageSize);
+
+	//memcpy(poruka + 4, message, duzina);
+	int iResult = send(publishSocket, dataToSend, dataToSendSize + 4, 0);
 
 	if (iResult == SOCKET_ERROR)
 	{
 		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(conSoc);
+		closesocket(publishSocket);
 		return false;
 	}
 
 	printf("Bytes Sent: %ld\n", iResult);
 	return true;
-
 }
-bool Connect(SOCKET conSoc)
+
+bool Connect(SOCKET publishSocket)
 {
 	// Send an prepared message with null terminator included'
-	const char *messageToSend = "Connect Publisher";
-	int duzina = strlen(messageToSend);
-	char *poruka = (char *)malloc(duzina + 4);
-	memcpy(poruka, &duzina, 4);
-	memcpy(poruka + 4, messageToSend, duzina);
-	int iResult = send(conSoc, poruka, duzina + 4, 0);
+	const char* initialMessageToSend = "New publisher has connected.";
+	int initialMessageSize = strlen(initialMessageToSend);
+	char* dataToSend = (char*)malloc(initialMessageSize + 4);
+	memcpy(dataToSend, &initialMessageSize, 4);
+	memcpy(dataToSend + 4, initialMessageToSend, initialMessageSize);
+	int iResult = send(publishSocket, dataToSend, initialMessageSize + 4, 0);
 
 	if (iResult == SOCKET_ERROR)
 	{
 		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(conSoc);
+		closesocket(publishSocket);
 		return false;
 	}
 	return true;
-
 }
-

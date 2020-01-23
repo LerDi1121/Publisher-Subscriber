@@ -12,7 +12,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
-char * msg_queue;
+char* msg_queue;
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT_FOR_SUB "27017"
@@ -24,7 +24,6 @@ typedef struct Subscriber {
 	char** queue;
 	Topic Topics[2];
 } Subscriber;
-
 
 typedef struct message_queue {
 	char* message;
@@ -43,8 +42,7 @@ typedef struct node_t_socket {
 
 typedef struct data_for_thread {
 	SOCKET socket;
-	char ** msgQueue;
-
+	char** msgQueue;
 }data_for_thread;
 
 bool InitializeWindowsSockets();
@@ -64,7 +62,7 @@ int  main(int argc, char** argv)
 
 	SOCKET acceptedSocket = INVALID_SOCKET;
 
-    //char* msg_queue = NULL;
+	//char* msg_queue = NULL;
 
 	//message_queue_t* msg_queue = NULL;
 	CreateQueue();
@@ -169,13 +167,13 @@ int  main(int argc, char** argv)
 				//AddSocketToList(&listSockets, acceptedSocket);
 				DWORD print1ID;
 				HANDLE Thread;
-				data_for_thread  temp=*( (data_for_thread*) malloc(sizeof(data_for_thread)));
+				data_for_thread  temp = *((data_for_thread*)malloc(sizeof(data_for_thread)));
 				temp.socket = acceptedSocket;
 				temp.msgQueue = &msg_queue;
-				
+
 				printf("Pravljenje treda\n");
-			
-			//	Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
+
+				//	Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
 				Thread = CreateThread(NULL, 0, &RcvMessage, &temp, 0, &print1ID);
 				AddToList(&listThread, Thread);
 
@@ -219,12 +217,12 @@ bool InitializeWindowsSockets()
 DWORD WINAPI RcvMessage(LPVOID param)
 {
 	//SOCKET acceptedSocket = *((SOCKET *)param);
-	data_for_thread temp = *((data_for_thread *)param);
+	data_for_thread temp = *((data_for_thread*)param);
 	SOCKET acceptedSocket = temp.socket;
-	char * msgQueue= *(temp.msgQueue);
+	char* msgQueue = *(temp.msgQueue);
 
 	FD_SET set;
-//	FD_SET setSub;
+	//	FD_SET setSub;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
@@ -242,8 +240,6 @@ DWORD WINAPI RcvMessage(LPVOID param)
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(acceptedSocket, &set)) {
-			
-
 				char someBuff[4];
 				int iResult = recv(acceptedSocket, someBuff, 4, 0);
 				if (iResult > 0)
@@ -252,11 +248,11 @@ DWORD WINAPI RcvMessage(LPVOID param)
 
 					char* Poruka = (char*)malloc(*velicinaPor);
 					bool temp = true;
-				//	printf("klinet zeli da posalje : %d.\n", *velicinaPor);
+					//	printf("klinet zeli da posalje : %d.\n", *velicinaPor);
 					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
 					if (iResult > 0)
 					{
-						char * start = Poruka;
+						char* start = Poruka;
 						Topic t = (Topic) * ((int*)Poruka);
 
 						TypeTopic tt = (TypeTopic) * ((int*)(Poruka + 4));
@@ -271,9 +267,9 @@ DWORD WINAPI RcvMessage(LPVOID param)
 
 						Enqueue(&msgQueue, start, *velicinaPor);
 
-					/*	printf("klinet je poslao  : %s.\n", Message);
-						printf("Topic : %d \n", t);
-						printf("Topic Type : %d\n ", tt);*/
+						/*	printf("klinet je poslao  : %s.\n", Message);
+							printf("Topic : %d \n", t);
+							printf("Topic Type : %d\n ", tt);*/
 					}
 					else if (iResult == 0)
 					{
@@ -369,23 +365,18 @@ void AddToList(node_t** head, HANDLE value)
 }
 void CreateQueue()
 {
-	
 	msg_queue = NULL;
-	msg_queue = (char *)malloc(520);//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
+	msg_queue = (char*)malloc(520);//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
 	int min = 0;
 	int max = 512;
 	memcpy(msg_queue, &min, 4);
-	memcpy(msg_queue+4, &max, 4);
-
-		
-
-
+	memcpy(msg_queue + 4, &max, 4);
 }
 
-void Enqueue(char ** queue, char* msg, int msg_size) {
-	int *lenght =(int *)(*queue);
-	int *ukupno = (int* )((*queue) +4);
-	if (*lenght + msg_size > *ukupno)
+void Enqueue(char** queue, char* msg, int msg_size) {
+	int* lenght = (int*)(*queue);
+	int* ukupno = (int*)((*queue) + 4);
+	if (*lenght + msg_size > * ukupno)
 	{
 		//alociraj novu memoriju
 		char* newQueue = (char*)malloc((*ukupno) * 2);
@@ -395,28 +386,25 @@ void Enqueue(char ** queue, char* msg, int msg_size) {
 		(*queue) = newQueue;
 		printf("\n nova memorija  ***********\n");
 
-		int *lenght = (int *)(*queue);
-		int *ukupno = (int*)((*queue) + 4);
-		char*message_for_queue = (char*)malloc(msg_size + 4);
+		int* lenght = (int*)(*queue);
+		int* ukupno = (int*)((*queue) + 4);
+		char* message_for_queue = (char*)malloc(msg_size + 4);
 		memcpy(message_for_queue, &msg_size, 4);
 		memcpy(message_for_queue + 4, msg, msg_size);
 
 		memcpy((*queue) + (*lenght) + 8, message_for_queue, msg_size + 4);
 		*lenght += (msg_size + 4);
 		printf("%d\n", *lenght);
-
-		
 	}
 	else
 	{
-		char*message_for_queue = (char*)malloc(msg_size + 4);
+		char* message_for_queue = (char*)malloc(msg_size + 4);
 		memcpy(message_for_queue, &msg_size, 4);
-		memcpy(message_for_queue+4, msg, msg_size);
-		
-		memcpy((*queue) +(*lenght)+8,message_for_queue,msg_size+4);
+		memcpy(message_for_queue + 4, msg, msg_size);
+
+		memcpy((*queue) + (*lenght) + 8, message_for_queue, msg_size + 4);
 		*lenght += (msg_size + 4);
 		printf("%d\n", *lenght);
-
 	}
 	/*message_queue_t* new_node;
 	new_node = (message_queue_t*)malloc(sizeof(message_queue_t));
