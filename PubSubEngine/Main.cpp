@@ -19,6 +19,13 @@ char * msg_queue;
 #define DEFAULT_PORT_FOR_PUB "27016"
 #define DEFAULT_PORT_SUBSCRIBER 27018
 
+typedef struct Subscriber {
+	SOCKET Socket;
+	char** queue;
+	Topic Topics[2];
+} Subscriber;
+
+
 typedef struct message_queue {
 	char* message;
 	struct message_queue* next;
