@@ -7,8 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
-
-#include "EnumsEngine.h"
+#include "..\common\AllEnums.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
@@ -35,8 +34,8 @@ typedef struct node_t_socket {
 } node_t_socket;
 
 typedef struct data_for_thread {
-	SOCKET *socket;
-	message_queue_t * msgQueue;
+	SOCKET socket;
+	char * msgQueue;
 
 }data_for_thread;
 
@@ -57,12 +56,13 @@ int  main(int argc, char** argv)
 
 	SOCKET acceptedSocket = INVALID_SOCKET;
 
-	message_queue_t* msg_queue = NULL;
-	CreateQueue(&msg_queue);
+    char* msg_queue = NULL;
+	//message_queue_t* msg_queue = NULL;
+//	CreateQueue(&msg_queue);
 
 	int iResult;
 	// Buffer used for storing incoming data
-	char recvbuf[DEFAULT_BUFLEN];
+	//char recvbuf[DEFAULT_BUFLEN];
 
 	if (InitializeWindowsSockets() == false)
 	{
@@ -161,7 +161,7 @@ int  main(int argc, char** argv)
 				DWORD print1ID;
 				HANDLE Thread;
 				data_for_thread * temp= (data_for_thread*) malloc(sizeof(data_for_thread));
-				temp->socket = &acceptedSocket;
+				temp->socket = acceptedSocket;
 				temp->msgQueue = msg_queue;
 				
 				printf("Pravljenje treda\n");
@@ -211,11 +211,11 @@ DWORD WINAPI RcvMessage(LPVOID param)
 	printf("ulazak\n");
 	data_for_thread*  temp = ((data_for_thread*)param);
 	printf("konvertovanje\n");
-	SOCKET acceptedSocket =*( temp->socket);
-	message_queue *msg_queue = temp->msgQueue;
+	SOCKET acceptedSocket = temp->socket;
+	char *msg_queue = temp->msgQueue;
 	printf("dodela\n");
 	FD_SET set;
-	FD_SET setSub;
+//	FD_SET setSub;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
@@ -259,7 +259,7 @@ DWORD WINAPI RcvMessage(LPVOID param)
 
 						Message[MessSize] = '\0';
 
-						Enqueue(&msg_queue, Message, MessSize);
+					//	Enqueue(&msg_queue, Message, MessSize);
 
 						printf("klinet je poslao  : %s.\n", Message);
 						printf("Topic : %d \n", t);

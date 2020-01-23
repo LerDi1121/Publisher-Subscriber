@@ -118,7 +118,9 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Enums.h" />
+    <ProjectReference Include="..\common\common.vcxproj">
+      <Project>{4fac6ec1-ef9c-48da-bc92-fac61c29000d}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

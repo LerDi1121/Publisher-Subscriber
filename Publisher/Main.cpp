@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
-#include "Enums.h"
+#include "..\common\AllEnums.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
@@ -23,11 +23,10 @@ bool Publish(void *topic, void * type, const char * message, SOCKET conSoc);
 
 int __cdecl main(int argc, char **argv)
 {
+
 	// socket used to communicate with server
 	SOCKET connectSocket = INVALID_SOCKET;
-	// variable used to store function return value
-	int iResult;
-	// message to send
+
 	const char *messageToSend = "this is a test";
 
 	// Validate the parameters
@@ -71,7 +70,7 @@ int __cdecl main(int argc, char **argv)
 	}
 //if (Connect(connectSocket))
 		while (1) {
-			Topic t = Status;
+			Topic t =Status;
 			TypeTopic tst = MER;
 
 			

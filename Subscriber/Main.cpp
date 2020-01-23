@@ -30,7 +30,7 @@ int  main(int argc, char** argv)
 	// variable used to store function return value
 	int iResult;
 	// Buffer used for storing incoming data
-	char recvbuf[DEFAULT_BUFLEN];
+	//char recvbuf[DEFAULT_BUFLEN];
 
 	if (InitializeWindowsSockets() == false)
 	{
