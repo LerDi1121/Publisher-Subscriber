@@ -60,7 +60,7 @@ int  main(int argc, char** argv)
     //char* msg_queue = NULL;
 
 	//message_queue_t* msg_queue = NULL;
-//	CreateQueue(&msg_queue);
+	CreateQueue();
 
 	int iResult;
 	// Buffer used for storing incoming data
@@ -240,10 +240,11 @@ DWORD WINAPI RcvMessage(LPVOID param)
 
 					char* Poruka = (char*)malloc(*velicinaPor);
 					bool temp = true;
-					printf("klinet zeli da posalje : %d.\n", *velicinaPor);
+				//	printf("klinet zeli da posalje : %d.\n", *velicinaPor);
 					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
 					if (iResult > 0)
 					{
+						char * start = Poruka;
 						Topic t = (Topic) * ((int*)Poruka);
 
 						TypeTopic tt = (TypeTopic) * ((int*)(Poruka + 4));
@@ -256,11 +257,11 @@ DWORD WINAPI RcvMessage(LPVOID param)
 
 						Message[MessSize] = '\0';
 
-					//	Enqueue(&msg_queue, Message, MessSize);
+						Enqueue( start, *velicinaPor);
 
-						printf("klinet je poslao  : %s.\n", Message);
+					/*	printf("klinet je poslao  : %s.\n", Message);
 						printf("Topic : %d \n", t);
-						printf("Topic Type : %d\n ", tt);
+						printf("Topic Type : %d\n ", tt);*/
 					}
 					else if (iResult == 0)
 					{
@@ -358,11 +359,53 @@ void CreateQueue()
 {
 	
 	msg_queue = NULL;
-	msg_queue = (char *)malloc(516);//brojac 4 i poruka 512
+	msg_queue = (char *)malloc(520);//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
+	int min = 0;
+	int max = 512;
+	memcpy(msg_queue, &min, 4);
+	memcpy(msg_queue+4, &max, 4);
+
+		
+
 
 }
 
 void Enqueue( char* msg, int msg_size) {
+	int *lenght =(int *)msg_queue;
+	int *ukupno = (int* )(msg_queue+4);
+	if (*lenght + msg_size > *ukupno)
+	{
+		//alociraj novu memoriju
+		char* newQueue = (char*)malloc((*ukupno) * 2);
+		*ukupno *= 2;
+		memcpy(newQueue, msg_queue, *lenght);
+		free(msg_queue);
+		msg_queue = newQueue;
+		printf("\n nova memorija  ***********\n");
+
+		int *lenght = (int *)msg_queue;
+		int *ukupno = (int*)(msg_queue + 4);
+		char*message_for_queue = (char*)malloc(msg_size + 4);
+		memcpy(message_for_queue, &msg_size, 4);
+		memcpy(message_for_queue + 4, msg, msg_size);
+
+		memcpy(msg_queue + (*lenght) + 8, message_for_queue, msg_size + 4);
+		*lenght += (msg_size + 4);
+		printf("%d\n", *lenght);
+
+		
+	}
+	else
+	{
+		char*message_for_queue = (char*)malloc(msg_size + 4);
+		memcpy(message_for_queue, &msg_size, 4);
+		memcpy(message_for_queue+4, msg, msg_size);
+		
+		memcpy(msg_queue+(*lenght)+8,message_for_queue,msg_size+4);
+		*lenght += (msg_size + 4);
+		printf("%d\n", *lenght);
+
+	}
 	/*message_queue_t* new_node;
 	new_node = (message_queue_t*)malloc(sizeof(message_queue_t));
 
