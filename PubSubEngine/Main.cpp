@@ -12,6 +12,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
+char * msg_queue;
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT_FOR_SUB "27017"
@@ -44,8 +45,8 @@ DWORD WINAPI RcvMessage(LPVOID param);
 void AddToList(node_t** head, HANDLE value);
 void AddSocketToList(node_t_socket** head, SOCKET value);
 SOCKET* CreateAceptSocket(SOCKET Listen);
-void Enqueue(message_queue_t** head, char* msg, int msg_size);
-void CreateQueue(message_queue ** head);
+void Enqueue( char* msg, int msg_size);
+void CreateQueue();
 
 int  main(int argc, char** argv)
 {
@@ -56,7 +57,8 @@ int  main(int argc, char** argv)
 
 	SOCKET acceptedSocket = INVALID_SOCKET;
 
-    char* msg_queue = NULL;
+    //char* msg_queue = NULL;
+
 	//message_queue_t* msg_queue = NULL;
 //	CreateQueue(&msg_queue);
 
@@ -160,13 +162,13 @@ int  main(int argc, char** argv)
 				//AddSocketToList(&listSockets, acceptedSocket);
 				DWORD print1ID;
 				HANDLE Thread;
-				data_for_thread * temp= (data_for_thread*) malloc(sizeof(data_for_thread));
+				/*data_for_thread * temp= (data_for_thread*) malloc(sizeof(data_for_thread));
 				temp->socket = acceptedSocket;
-				temp->msgQueue = msg_queue;
+				temp->msgQueue = msg_queue;*/
 				
 				printf("Pravljenje treda\n");
 			//	Thread = CreateThread(NULL, 0, *((LPTHREAD_START_ROUTINE*)temp), &acceptedSocket, 0, &print1ID);
-				Thread = CreateThread(NULL, 0, &RcvMessage, &temp, 0, &print1ID);
+				Thread = CreateThread(NULL, 0, &RcvMessage, &acceptedSocket, 0, &print1ID);
 				AddToList(&listThread, Thread);
 
 				//	break;
@@ -208,12 +210,7 @@ bool InitializeWindowsSockets()
 
 DWORD WINAPI RcvMessage(LPVOID param)
 {
-	printf("ulazak\n");
-	data_for_thread*  temp = ((data_for_thread*)param);
-	printf("konvertovanje\n");
-	SOCKET acceptedSocket = temp->socket;
-	char *msg_queue = temp->msgQueue;
-	printf("dodela\n");
+	SOCKET acceptedSocket = *((SOCKET *)param);
 	FD_SET set;
 //	FD_SET setSub;
 	timeval timeVal;
@@ -357,24 +354,21 @@ void AddToList(node_t** head, HANDLE value)
 		current->next = NULL;
 	}
 }
-void CreateQueue(message_queue ** head)
+void CreateQueue()
 {
-	if ((*head) == NULL)
-	{
-		(*head) = (message_queue*)malloc(sizeof(message_queue));
-		(*head)->message = NULL;
-		(*head)->next = NULL;
-	}
+	
+	msg_queue = NULL;
+	msg_queue = (char *)malloc(516);//brojac 4 i poruka 512
 
 }
 
-void Enqueue(message_queue_t** head, char* msg, int msg_size) {
-	message_queue_t* new_node;
+void Enqueue( char* msg, int msg_size) {
+	/*message_queue_t* new_node;
 	new_node = (message_queue_t*)malloc(sizeof(message_queue_t));
 
 	new_node->message = (char*)malloc(msg_size);
 	memcpy(new_node->message, (void*)msg, msg_size);
 
 	new_node->next = *head;
-	*head = new_node;
+	*head = new_node;*/
 }

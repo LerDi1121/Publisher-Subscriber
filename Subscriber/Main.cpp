@@ -21,6 +21,7 @@ bool InitializeWindowsSockets();
 
 void Subscribe(const char* addres);
 
+
 int  main(int argc, char** argv)
 {
 	// Socket used for listening for new clients 
