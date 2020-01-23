@@ -14,204 +14,67 @@
 
 
 #define DEFAULT_BUFLEN 512
-#define DEFAULT_PORT_FOR_PUB_SUB_ENG "27018"
+
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
 
 bool InitializeWindowsSockets();
+bool Connect(SOCKET subscribeSocket);
+bool Subscribe(SOCKET subscribeSocket);
 
-void Subscribe(const char* addres);
 
 
 int  main(int argc, char** argv)
 {
-	// Socket used for listening for new clients 
-	SOCKET listenSocket = INVALID_SOCKET;
-	// Socket used for communication with client
-	SOCKET acceptedSocket = INVALID_SOCKET;
+	
+	SOCKET connectSocket = INVALID_SOCKET;
 	// variable used to store function return value
 	int iResult;
-	// Buffer used for storing incoming data
-	//char recvbuf[DEFAULT_BUFLEN];
+	if (argc != 2)
+	{
+		printf("usage: %s server-name\n", argv[0]);
+		return 1;
+	}
 
 	if (InitializeWindowsSockets() == false)
 	{
-		// we won't log anything since it will be logged
-		// by InitializeWindowsSockets() function
+
 		return 1;
 	}
 
-	// Prepare address information structures
-	addrinfo *resultingAddress = NULL;
-	addrinfo hints;
+	// create a socket
+	connectSocket = socket(AF_INET,
+		SOCK_STREAM,
+		IPPROTO_TCP);
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;       // IPv4 address
-	hints.ai_socktype = SOCK_STREAM; // Provide reliable data streaming
-	hints.ai_protocol = IPPROTO_TCP; // Use TCP protocol
-	hints.ai_flags = AI_PASSIVE;     // 
-
-	// Resolve the server address and port
-	iResult = getaddrinfo(NULL, DEFAULT_PORT_FOR_PUB_SUB_ENG, &hints, &resultingAddress);
-	if (iResult != 0)
-	{
-		printf("getaddrinfo failed with error: %d\n", iResult);
-		WSACleanup();
-		return 1;
-	}
-
-	// Create a SOCKET for connecting to server
-	listenSocket = socket(AF_INET,      // IPv4 address famly
-		SOCK_STREAM,  // stream socket
-		IPPROTO_TCP); // TCP
-
-	if (listenSocket == INVALID_SOCKET)
+	if (connectSocket == INVALID_SOCKET)
 	{
 		printf("socket failed with error: %ld\n", WSAGetLastError());
-		freeaddrinfo(resultingAddress);
 		WSACleanup();
 		return 1;
 	}
 
-	// Setup the TCP listening socket - bind port number and local address 
-	// to socket
-	iResult = bind(listenSocket, resultingAddress->ai_addr, (int)resultingAddress->ai_addrlen);
-	if (iResult == SOCKET_ERROR)
+	// create and initialize address structure
+	sockaddr_in serverAddress;
+	serverAddress.sin_family = AF_INET;
+	serverAddress.sin_addr.s_addr = inet_addr(argv[1]);
+	serverAddress.sin_port = htons(DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND);
+
+	// connect to server specified in serverAddress and socket connectSocket
+	if (connect(connectSocket, (SOCKADDR*)& serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
 	{
-		printf("bind failed with error: %d\n", WSAGetLastError());
-		freeaddrinfo(resultingAddress);
-		closesocket(listenSocket);
+		printf("Unable to connect to server.\n");
+		closesocket(connectSocket);
 		WSACleanup();
-		return 1;
 	}
+	if (Connect(connectSocket))
+		Subscribe(connectSocket);
+		while (1) {
 
-	unsigned long int nonBlockingMode = 1;
-	iResult = ioctlsocket(listenSocket, FIONBIO, &nonBlockingMode);// ******omoguciti  ne blokirajuci rezim
-
-	// Since we don't need resultingAddress any more, free it
-	freeaddrinfo(resultingAddress);
-
-	// Set listenSocket in listening mode
-	iResult = listen(listenSocket, SOMAXCONN);
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("listen failed with error: %d\n", WSAGetLastError());
-		closesocket(listenSocket);
-		WSACleanup();
-		return 1;
-	}
-	iResult = ioctlsocket(acceptedSocket, FIONBIO, (u_long *)1);
-
-	printf("Server initialized, waiting for clients.\n");
-
-	//////////************napraviti fd setove
-	FD_SET set;
-	timeval timeVal;
-	timeVal.tv_sec = 1;
-	timeVal.tv_usec = 0;
-	Subscribe(argv[1]);
-	do
-	{
-		// konektovanje 
-		FD_ZERO(&set);
-
-		FD_SET(listenSocket, &set);
-		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
-
-		if (iResult == SOCKET_ERROR) {
-			//desila se greska prilikom poziva funkcije
+			Sleep(1000);
 		}
-		else if (iResult != 0) {
-			if (FD_ISSET(listenSocket, &set)) {
-				acceptedSocket = accept(listenSocket, NULL, NULL);
-				/* kada dobijemo zahtev onda pravimo accepted socket*/
-				if (acceptedSocket == INVALID_SOCKET)
-				{
-					printf("accept failed with error: %d\n", WSAGetLastError());
-					closesocket(listenSocket);
-					WSACleanup();
-					return 1;
-				}
-
-				nonBlockingMode = 1;
-				iResult = ioctlsocket(acceptedSocket, FIONBIO, &nonBlockingMode);
-				//	break;
-			}
-		}
-		///
-
-		///prijem poruke
-
-		FD_SET(acceptedSocket, &set);
-
-		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
-
-		if (iResult == SOCKET_ERROR) {
-			//desila se greska prilikom poziva funkcije
-		}
-		else if (iResult != 0) {
-			if (FD_ISSET(acceptedSocket, &set)) {
-				char someBuff[4];
-				iResult = recv(acceptedSocket, someBuff, 4, 0);
-				if (iResult > 0)
-				{
-					int* velicinaPor = (int*)someBuff;
-
-					char* Poruka = (char*)malloc(*velicinaPor);
-					bool temp = true;
-					printf("klinet zeli da posalje : %d.\n", *velicinaPor);
-					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
-					if (iResult > 0)
-					{
-						Poruka[iResult] = '\0';
-						printf("pubSub engine je pposlao : %s.\n", Poruka);
-					}
-					else if (iResult == 0)
-					{
-						printf("Connection with client closed.\n");
-						closesocket(acceptedSocket);
-					}
-					else
-					{
-						printf("1 recv failed with error: %d\n", WSAGetLastError());
-
-						closesocket(acceptedSocket);
-					}
-					//Sleep(1022);
-
-
-
-				}
-				else if (iResult == 0)
-				{
-					// connection was closed gracefully
-					printf("Connection with client closed.\n");
-					closesocket(acceptedSocket);
-				}
-				else
-				{
-					// there was an error during recv
-					printf(" 2recv failed with error: %d\n", WSAGetLastError());
-					closesocket(acceptedSocket);
-				}
-			}
-		}
-
-	} while (1);
-
-
-	// shutdown the connection since we're done
-	iResult = shutdown(acceptedSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
-		closesocket(acceptedSocket);
-		WSACleanup();
-		return 1;
-	}
-
 	// cleanup
-	closesocket(listenSocket);
-	closesocket(acceptedSocket);
+
+	closesocket(connectSocket);
 	WSACleanup();
 
 	return 0;
@@ -228,74 +91,36 @@ bool InitializeWindowsSockets()
 	}
 	return true;
 }
+bool Connect(SOCKET subscribeSocket)
+{
+	int por = 1;
 
-
-void Subscribe( const char * addres) {
-	// socket used to communicate with server
-	SOCKET connectSocket = INVALID_SOCKET;
-	// variable used to store function return value
-	int iResult;
-	// message to send
-	const char* messageToSend = "this is a test SUBSCRIBE";
-
-
-	if (InitializeWindowsSockets() == false)
-	{
-		// we won't log anything since it will be logged
-		// by InitializeWindowsSockets() function
-		return;
-	}
-
-	// create a socket
-	connectSocket = socket(AF_INET,
-		SOCK_STREAM,
-		IPPROTO_TCP);
-
-	if (connectSocket == INVALID_SOCKET)
-	{
-		printf("socket failed with error: %ld\n", WSAGetLastError());
-		WSACleanup();
-		return;
-	}
-
-	// create and initialize address structure
-	sockaddr_in serverAddress;
-	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_addr.s_addr = inet_addr(addres);
-	serverAddress.sin_port = htons(DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND);
-
-	// connect to server specified in serverAddress and socket connectSocket
-	if (connect(connectSocket, (SOCKADDR*)& serverAddress, sizeof(serverAddress)) == SOCKET_ERROR)
-	{
-		printf("Unable to connect to server.\n");
-		closesocket(connectSocket);
-		WSACleanup();
-	}
-
-	
-	
-		// Send an prepared message with null terminator included
-	int duzina = strlen(messageToSend);
-	char* poruka = (char*)malloc(duzina + 4);
-	memcpy(poruka, &duzina, 4);
-	memcpy(poruka + 4, messageToSend, duzina);
-	iResult = send(connectSocket, poruka, duzina + 4, 0);
+	int iResult = send(subscribeSocket, (char *)(&por), 4,0);
 
 	if (iResult == SOCKET_ERROR)
 	{
 		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(connectSocket);
-		WSACleanup();
-		return;
+		closesocket(subscribeSocket);
+		return false;
 	}
-
-	printf("Bytes Sent: %ld\n", iResult);
-	
-	// cleanup
-	closesocket(connectSocket);
-	WSACleanup();
-
-	return;
+	return true;
 }
+bool Subscribe (SOCKET subscribeSocket)
+{
+
+	int por = 2;
+
+	int iResult = send(subscribeSocket, (char *)(&por), 4, 0);
+
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("send failed with error: %d\n", WSAGetLastError());
+		closesocket(subscribeSocket);
+		return false;
+	}
+	return true;
+}
+
+
 
 
