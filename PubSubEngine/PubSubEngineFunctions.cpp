@@ -1,10 +1,10 @@
 #include "PubSubEngineFunctions.h"
 
- CRITICAL_SECTION cs;
- char* msg_queue;
- Subscriber * queueSUb;
- node_t* listThread = NULL;
-
+CRITICAL_SECTION cs;
+char* msg_queue;
+node_t* listThread = NULL;
+node_subscriber_t* listAnalog = NULL;
+node_subscriber_t* listStatus = NULL;
 
 bool InitializeWindowsSockets()
 {
@@ -18,10 +18,10 @@ bool InitializeWindowsSockets()
 	return true;
 }
 
-///primanje poruke suba i slanje na njega 
+///primanje poruke suba i slanje na njega
 DWORD WINAPI RcvMessageFromSub(LPVOID param)
 {
-	SOCKET acceptedSocket = *((SOCKET *)param);
+	SOCKET acceptedSocket = *((SOCKET*)param);
 
 	FD_SET set;
 	timeval timeVal;
@@ -42,7 +42,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				int iResult = recv(acceptedSocket, someBuff, 4, 0);
 				if (iResult > 0)
 				{
-						break;//connect	
+					break;//connect
 				}
 				else if (iResult == 0)
 				{
@@ -61,6 +61,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	while (true)//subscribe
 	{
 		FD_SET(acceptedSocket, &set);
+		subscriber_t* sub;
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
 			printf("SOCKET_ERROR");
@@ -72,22 +73,9 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				int iResult = recv(acceptedSocket, someBuff, 4, 0);
 				if (iResult > 0)
 				{
-					int * msg = (int *)someBuff;
-					if (*msg == 1)
-					{
-						printf("Topicc 1"); break;
-					}
-					else if (*msg == 2)
-					{
-						printf("Topicc 2"); break;
-					}
-					else if (*msg == 3)
-					{
-						printf("Topicc 1 and topic 2"); break;
-					}
-					else
-						continue;
-
+					int* msg = (int*)someBuff;
+					sub = CreateSubscriber(acceptedSocket, *msg);
+					AddSubscriberToList(&sub);
 				}
 				else if (iResult == 0)
 				{
@@ -100,7 +88,6 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 					closesocket(acceptedSocket);
 				}
 			}
-			
 		}
 		Sleep(500);
 	}
@@ -112,7 +99,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	}
 }
 
-///slusanje za subove 
+///slusanje za subove
 DWORD WINAPI ListenSubscriber(LPVOID param)
 {
 	SOCKET subscriberListenSocket = *((SOCKET*)param);
@@ -124,7 +111,8 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		WSACleanup();
 		return 1;
 	}
-	iResult = ioctlsocket(subscriberListenSocket, FIONBIO, (u_long*)1);
+	unsigned long int temp = 1;
+	iResult = ioctlsocket(subscriberListenSocket, FIONBIO, &temp);
 
 	printf("Server initialized, waiting for SUBSCRIBER.\n");
 
@@ -143,7 +131,6 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(subscriberListenSocket, &setSub)) {
-
 				subscriberAcceptedSocket = *CreateAcceptSocket(subscriberListenSocket);
 
 				DWORD print1ID;
@@ -158,9 +145,8 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		}
 		Sleep(1000);
 	} while (true);
-
 }
-/// primanje poruke sa puba 
+/// primanje poruke sa puba
 DWORD WINAPI RcvMessage(LPVOID param)
 {
 	//SOCKET acceptedSocket = *((SOCKET *)param);
@@ -196,10 +182,9 @@ DWORD WINAPI RcvMessage(LPVOID param)
 					{
 						Poruka[iResult] = '\0';
 
-						EnterCriticalSection(&cs);
-						Enqueue(&msg_queue, Poruka, *velicinaPor);
-						LeaveCriticalSection(&cs);
-
+						//EnterCriticalSection(&cs);
+					//	Enqueue(&msg_queue, Poruka, *velicinaPor);
+						//LeaveCriticalSection(&cs);
 					}
 					else if (iResult == 0)
 					{
@@ -249,24 +234,37 @@ SOCKET* CreateAcceptSocket(SOCKET  listenSocket)
 	return acceptedSocket;
 }
 
-void AddSocketToList(node_t_socket** head, SOCKET value)
+void AddSubscriberToList(subscriber_t** sub)
 {
-	if ((*head) == NULL)
+	if ((*sub)->topic == 1) {
+		AddToConcreteList(&listAnalog, sub);
+	}
+	if ((*sub)->topic == 2) {
+		AddToConcreteList(&listStatus, sub);
+	}
+	if ((*sub)->topic == 3) {
+		AddToConcreteList(&listAnalog, sub);
+		AddToConcreteList(&listStatus, sub);
+	}
+}
+
+void AddToConcreteList(node_subscriber_t** list, subscriber_t** sub) {
+	if ((*list) == NULL)
 	{
-		(*head) = (node_t_socket*)malloc(sizeof(node_t_socket));
-		(*head)->value = value;
-		(*head)->next = NULL;
+		(*list) = (node_subscriber_t*)malloc(sizeof(node_subscriber_t));
+		(*list)->subscriber = sub;
+		(*list)->next = NULL;
 	}
 	else
 	{
-		node_t_socket* current = (*head);
+		node_subscriber_t* current = (*list);
 		while (current->next != NULL) {
 			current = current->next;
 		}
 
-		current->next = (node_t_socket*)malloc(sizeof(node_t_socket));;
+		current->next = (node_subscriber_t*)malloc(sizeof(node_subscriber_t));;
 		current = current->next;
-		current->value = value;
+		current->subscriber = sub;
 		current->next = NULL;
 	}
 }
@@ -291,19 +289,16 @@ void AddToList(node_t** head, HANDLE value)
 		current->next = NULL;
 	}
 }
-void CreateQueue()
+void CreateQueue(char** msgQueue)
 {
-	msg_queue = NULL;
-	msg_queue = (char*)malloc(520);//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
+	*msgQueue = NULL;
+	*msgQueue = ((char*)malloc(520));//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
 	int min = 0;
 	int max = 512;
-	memcpy(msg_queue, &min, 4);
-	memcpy(msg_queue + 4, &max, 4);
+	memcpy(msgQueue, &min, 4);
+	memcpy(msgQueue + 4, &max, 4);
 }
-
 void Enqueue(char** queue, char* msg, int msg_size) {
-
-
 	int* lenght = (int*)(*queue);
 	int* ukupno = (int*)((*queue) + 4);
 	if (*lenght + msg_size > * ukupno)
@@ -336,10 +331,8 @@ void Enqueue(char** queue, char* msg, int msg_size) {
 		*lenght += (msg_size + 4);
 		printf("%d\n", *lenght);
 	}
-
 }
-
-SOCKET * CreatePublisherListenSocket()
+SOCKET* CreatePublisherListenSocket()
 {
 	SOCKET* listenSocketRetVal = (SOCKET*)malloc(sizeof(SOCKET));
 
@@ -391,11 +384,8 @@ SOCKET * CreatePublisherListenSocket()
 	iResult = ioctlsocket(*listenSocketRetVal, FIONBIO, &nonBlockingMode);// ******omoguciti  ne blokirajuci rezim
 	freeaddrinfo(resultingAddress);
 	return listenSocketRetVal;
-
 }
-
-
-SOCKET * CreateSubscriberListenSocket()
+SOCKET* CreateSubscriberListenSocket()
 {
 	SOCKET* listenSocketRetVal = (SOCKET*)malloc(sizeof(SOCKET));
 
@@ -447,4 +437,12 @@ SOCKET * CreateSubscriberListenSocket()
 	iResult = ioctlsocket(*listenSocketRetVal, FIONBIO, &nonBlockingMode);// ******omoguciti  ne blokirajuci rezim
 
 	return listenSocketRetVal;
+}
+subscriber_t* CreateSubscriber(SOCKET socket, int topic) {
+	subscriber_t* temp = (subscriber_t*)malloc(sizeof(subscriber_t));
+	temp->socket = socket;
+	temp->topic = topic;
+	temp->queue = NULL;
+	CreateQueue(&(temp->queue));
+	return temp;
 }

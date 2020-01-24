@@ -12,7 +12,6 @@
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 
-
 #define DEFAULT_BUFLEN 512
 
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
@@ -21,11 +20,8 @@ bool InitializeWindowsSockets();
 bool Connect(SOCKET subscribeSocket);
 bool Subscribe(SOCKET subscribeSocket);
 
-
-
 int  main(int argc, char** argv)
 {
-	
 	SOCKET connectSocket = INVALID_SOCKET;
 	// variable used to store function return value
 	int iResult;
@@ -37,7 +33,6 @@ int  main(int argc, char** argv)
 
 	if (InitializeWindowsSockets() == false)
 	{
-
 		return 1;
 	}
 
@@ -66,12 +61,12 @@ int  main(int argc, char** argv)
 		closesocket(connectSocket);
 		WSACleanup();
 	}
+
 	if (Connect(connectSocket))
 		Subscribe(connectSocket);
-		while (1) {
-
-			Sleep(1000);
-		}
+	while (1) {
+		Sleep(1000);
+	}
 	// cleanup
 
 	closesocket(connectSocket);
@@ -95,7 +90,7 @@ bool Connect(SOCKET subscribeSocket)
 {
 	int por = 1;
 
-	int iResult = send(subscribeSocket, (char *)(&por), 4,0);
+	int iResult = send(subscribeSocket, (char*)(&por), 4, 0);
 
 	if (iResult == SOCKET_ERROR)
 	{
@@ -105,12 +100,11 @@ bool Connect(SOCKET subscribeSocket)
 	}
 	return true;
 }
-bool Subscribe (SOCKET subscribeSocket)
+bool Subscribe(SOCKET subscribeSocket)
 {
-
 	int por = 2;
 
-	int iResult = send(subscribeSocket, (char *)(&por), 4, 0);
+	int iResult = send(subscribeSocket, (char*)(&por), 4, 0);
 
 	if (iResult == SOCKET_ERROR)
 	{
@@ -120,7 +114,3 @@ bool Subscribe (SOCKET subscribeSocket)
 	}
 	return true;
 }
-
-
-
-

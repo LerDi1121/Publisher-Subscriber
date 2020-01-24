@@ -1,10 +1,7 @@
 #include "PubSubEngineFunctions.h"
 
-
-
 int  main(int argc, char** argv)
 {
-	
 	node_t_socket* listSockets = NULL;
 
 	SOCKET publisherListenSocket = INVALID_SOCKET;
@@ -13,12 +10,11 @@ int  main(int argc, char** argv)
 	SOCKET publisherAcceptedSocket = INVALID_SOCKET;
 	SOCKET subscriberAcceptedSocket = INVALID_SOCKET;
 	InitializeCriticalSection(&cs);
-	
-	CreateQueue();
+
+	//CreateQueue();
 
 	int iResult;
 
-	
 	if (InitializeWindowsSockets() == false)
 	{
 		return 1;
@@ -26,14 +22,12 @@ int  main(int argc, char** argv)
 
 	// Prepare address information structures
 	publisherListenSocket = *CreatePublisherListenSocket();
-	subscriberListenSocket= *CreateSubscriberListenSocket();
+	subscriberListenSocket = *CreateSubscriberListenSocket();
 	//thread za subove
 	DWORD printSubID;
 	HANDLE ThreadSub;
 	ThreadSub = CreateThread(NULL, 0, &ListenSubscriber, &subscriberListenSocket, 0, &printSubID);
 	AddToList(&listThread, ThreadSub);
-
-
 
 	iResult = listen(publisherListenSocket, SOMAXCONN);
 	if (iResult == SOCKET_ERROR)
@@ -50,8 +44,6 @@ int  main(int argc, char** argv)
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
-
-
 
 	/* primanje poruka*/
 
@@ -77,7 +69,6 @@ int  main(int argc, char** argv)
 
 				printf("Pravljenje treda\n");
 
-				
 				Thread = CreateThread(NULL, 0, &RcvMessage, &temp, 0, &print1ID);
 				AddToList(&listThread, Thread);
 
@@ -98,7 +89,7 @@ int  main(int argc, char** argv)
 	}
 
 	DeleteCriticalSection(&cs);
-	///uradit 
+	///uradit
 	//oslobditi hendlove -> tredovi
 	// cleanup
 	closesocket(publisherListenSocket);

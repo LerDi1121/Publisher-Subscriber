@@ -5,7 +5,6 @@
 #ifndef HEADER_H
 #define HEADER_H
 
-
 #include <stdio.h>
 #include <windows.h>
 #include <winsock2.h>
@@ -13,7 +12,6 @@
 #include <stdlib.h>
 #include <conio.h>
 #include  "..\common\AllEnums.h"
-
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
@@ -23,19 +21,16 @@
 #define DEFAULT_PORT_FOR_SUB "27017"
 #define DEFAULT_PORT_FOR_PUB "27016"
 
+typedef struct subscriber {
+	SOCKET socket;
+	char* queue;
+	int topic;
+} subscriber_t;
 
-
-
-typedef struct Subscriber {
-	SOCKET Socket;
-	char** queue;
-	Topic Topics[2];
-} Subscriber;
-
-typedef struct message_queue {
-	char* message;
-	struct message_queue* next;
-} message_queue_t;
+typedef struct node_subscriber {
+	subscriber_t** subscriber;
+	node_subscriber* next;
+}node_subscriber_t;
 
 typedef struct node {
 	HANDLE value;
@@ -55,23 +50,23 @@ typedef struct data_for_thread {
 
 extern CRITICAL_SECTION cs;
 extern char* msg_queue;
-extern Subscriber * queueSUb;
-
 extern node_t* listThread;
+extern node_subscriber_t* listAnalog;
+extern node_subscriber_t* listStatus;
 
+subscriber_t* CreateSubscriber(SOCKET socket, int topic);
 bool InitializeWindowsSockets();
 DWORD WINAPI RcvMessage(LPVOID param);
 void AddToList(node_t** head, HANDLE value);
-void AddSocketToList(node_t_socket** head, SOCKET value);
+void AddSubscriberToList(subscriber_t** sub);
+void AddToConcreteList(node_subscriber_t** list, subscriber_t** sub);
 SOCKET* CreateAcceptSocket(SOCKET Listen);
 void Enqueue(char** queue, char* msg, int msg_size);
-void CreateQueue();
+void CreateQueue(char** msgQueue);
 
-
-SOCKET * CreatePublisherListenSocket();
-SOCKET * CreateSubscriberListenSocket();
+SOCKET* CreatePublisherListenSocket();
+SOCKET* CreateSubscriberListenSocket();
 
 DWORD WINAPI ListenSubscriber(LPVOID param);
-
 
 #endif // HEADER_H
