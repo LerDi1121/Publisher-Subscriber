@@ -148,26 +148,36 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 }
 DWORD WINAPI WriteMessage(LPVOID param)
 {
-	char * message = (char *)param;
-	int *  messageLength = (int *)message; // ukupna duzina poruke topic +type +text
-	Topic t = (Topic) * ((int *)(message+4));
-	TypeTopic tt = (TypeTopic) *((int *)(message + 8));
-	message = message + sizeof(Topic) + sizeof(TypeTopic) +4;// pomeramo se na tekst
+	char* message = (char*)param;
+	int* messageLength = (int*)message; // ukupna duzina poruke topic +type +text
+	Topic t = (Topic) * ((int*)(message + 4));
+	TypeTopic tt = (TypeTopic) * ((int*)(message + 8));
+	message = message + sizeof(Topic) + sizeof(TypeTopic) + 4;// pomeramo se na tekst
 
 	int MessSize = *messageLength - (sizeof(Topic) + sizeof(TypeTopic));
-	char * Message = (char *)malloc(MessSize);
-	
+	char* Message = (char*)malloc(MessSize);
 
-	memcpy(Message,message, MessSize);
+	memcpy(Message, message, MessSize);
 
 	Message[MessSize] = '\0';
 	EnterCriticalSection(&cs);
 	printf("klinet je poslao  : %s.\n", Message);
 	printf("Topic : %d", t);
 	printf("Topic Type : %d", tt);
+	switch (t) {
+	case 1:
+		AddMessageToQueue(message, *messageLength, &listAnalog);
+		break;
+	case 2:
+		AddMessageToQueue(message, *messageLength, &listStatus);
+		break;
+	case 3:
+		AddMessageToQueue(message, *messageLength, &listAnalog);
+		AddMessageToQueue(message, *messageLength, &listStatus);
+		break;
+	}
 	LeaveCriticalSection(&cs);
 	return 1;
-
 }
 /// primanje poruke sa puba
 DWORD WINAPI RcvMessage(LPVOID param)
@@ -205,10 +215,9 @@ DWORD WINAPI RcvMessage(LPVOID param)
 					{
 						Poruka[iResult] = '\0';
 
-
-						char *messageForQueue = (char *)malloc((*velicinaPor) + 4); 
+						char* messageForQueue = (char*)malloc((*velicinaPor) + 4);
 						memcpy(messageForQueue, velicinaPor, 4);
-						memcpy(messageForQueue+4, Poruka, *velicinaPor);
+						memcpy(messageForQueue + 4, Poruka, *velicinaPor);
 						DWORD print1ID;
 						HANDLE Thread;
 						printf("Pravljenje treda Za upis poruke u queue \n");
@@ -474,4 +483,21 @@ subscriber_t* CreateSubscriber(SOCKET socket, int topic) {
 	temp->queue = NULL;
 	CreateQueue(&(temp->queue));
 	return temp;
+}
+void AddMessageToQueue(char* message, int msgSize, node_subscriber_t** list) {
+	if ((*list) == NULL)
+		return;
+
+	node_subscriber_t* current = (*list);
+
+	while (true) {
+		char* queue = (*(current->subscriber))->queue;
+		Enqueue(&queue, message, msgSize);
+		if (current->next == NULL) {
+			break;
+		}
+		else {
+			current = current->next;
+		}
+	}
 }
