@@ -67,6 +67,9 @@ void CreateQueue(char** msgQueue);
 SOCKET* CreatePublisherListenSocket();
 SOCKET* CreateSubscriberListenSocket();
 
+DWORD WINAPI WriteMessage(LPVOID param);// za poseban tred koji ce upisivati u red
+
+
 DWORD WINAPI ListenSubscriber(LPVOID param);
 
 #endif // HEADER_H

@@ -146,6 +146,29 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		Sleep(1000);
 	} while (true);
 }
+DWORD WINAPI WriteMessage(LPVOID param)
+{
+	char * message = (char *)param;
+	int *  messageLength = (int *)message; // ukupna duzina poruke topic +type +text
+	Topic t = (Topic) * ((int *)(message+4));
+	TypeTopic tt = (TypeTopic) *((int *)(message + 8));
+	message = message + sizeof(Topic) + sizeof(TypeTopic) +4;// pomeramo se na tekst
+
+	int MessSize = *messageLength - (sizeof(Topic) + sizeof(TypeTopic));
+	char * Message = (char *)malloc(MessSize);
+	
+
+	memcpy(Message,message, MessSize);
+
+	Message[MessSize] = '\0';
+	EnterCriticalSection(&cs);
+	printf("klinet je poslao  : %s.\n", Message);
+	printf("Topic : %d", t);
+	printf("Topic Type : %d", tt);
+	LeaveCriticalSection(&cs);
+	return 1;
+
+}
 /// primanje poruke sa puba
 DWORD WINAPI RcvMessage(LPVOID param)
 {
@@ -182,9 +205,15 @@ DWORD WINAPI RcvMessage(LPVOID param)
 					{
 						Poruka[iResult] = '\0';
 
-						//EnterCriticalSection(&cs);
-					//	Enqueue(&msg_queue, Poruka, *velicinaPor);
-						//LeaveCriticalSection(&cs);
+
+						char *messageForQueue = (char *)malloc((*velicinaPor) + 4); 
+						memcpy(messageForQueue, velicinaPor, 4);
+						memcpy(messageForQueue+4, Poruka, *velicinaPor);
+						DWORD print1ID;
+						HANDLE Thread;
+						printf("Pravljenje treda Za upis poruke u queue \n");
+						Thread = CreateThread(NULL, 0, &WriteMessage, messageForQueue, 0, &print1ID);
+						AddToList(&listThread, Thread);
 					}
 					else if (iResult == 0)
 					{
