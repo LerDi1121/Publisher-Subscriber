@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
+#include  "..\common\AllEnums.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
@@ -16,6 +17,7 @@
 
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
 
+void PrintMessage(char* msg, int totalSize);
 bool InitializeWindowsSockets();
 bool Connect(SOCKET subscribeSocket);
 bool Subscribe(SOCKET subscribeSocket);
@@ -64,8 +66,58 @@ int  main(int argc, char** argv)
 
 	if (Connect(connectSocket))
 		Subscribe(connectSocket);
-	while (1) {
-		Sleep(1000);
+
+
+	FD_SET set;
+	timeval timeVal;
+	timeVal.tv_sec = 1;
+	timeVal.tv_usec = 0;
+	FD_ZERO(&set);
+
+	char messageBufer[DEFAULT_BUFLEN];
+
+	while (true)//subscribe
+	{
+		FD_SET(connectSocket, &set);
+		char* message = NULL;
+		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
+		if (iResult == SOCKET_ERROR) {
+			printf("SOCKET_ERROR");
+			continue;
+		}
+		else if (iResult != 0) {
+			if (FD_ISSET(connectSocket, &set)) {
+				char * someBuff = (char *)malloc(4);
+				int* bufflen ;
+				int iResult = recv(connectSocket, someBuff, 4, 0);
+				if (iResult > 0)
+				{
+					bufflen = (int*)someBuff;
+					int temp = *bufflen;
+					message = (char*)malloc(*bufflen);
+					char* mess = message;
+				
+					while (*bufflen > 0) {
+						iResult = recv(connectSocket, messageBufer, DEFAULT_BUFLEN, 0);
+						*bufflen -= iResult;
+						memcpy(mess, messageBufer, iResult);
+						mess += iResult;
+					}
+					PrintMessage(message, temp);
+					free((void *) message);
+				}
+				else if (iResult == 0)
+				{
+					printf("Connection with client closed.\n");
+					break;
+				}
+				else
+				{
+					printf("recv failed with error: %d\n", WSAGetLastError());
+					break;
+				}
+			}
+		}
 	}
 	// cleanup
 
@@ -113,4 +165,28 @@ bool Subscribe(SOCKET subscribeSocket)
 		return false;
 	}
 	return true;
+}
+
+
+void PrintMessage(char* msg, int totalSize) {
+	char* message =msg;
+	int* msgSize = (int*)msg;
+	char* msge = NULL;
+	
+	while (totalSize >0) {
+		msgSize = (int*)message;
+		message += 4;
+		Topic t = (Topic) * ((int*)(message ));
+		TypeTopic tt = (TypeTopic) * ((int*)(message + 4));
+		msge = (char*)malloc(*msgSize - 8);
+		memcpy(msge, message+8, *msgSize - 8);
+		msge[*msgSize - 8] = '\0';
+		printf(" %s\n", msge);
+		message += (*msgSize);
+		totalSize -= (*msgSize + 4);
+		//free(&msge);
+		
+	}
+	printf("\n************ \n");
+	
 }

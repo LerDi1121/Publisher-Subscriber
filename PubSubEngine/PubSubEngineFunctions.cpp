@@ -104,6 +104,23 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		char * messageForSend = (char *)malloc(*size + 4);
 		memcpy(messageForSend, size, 4);
 		memcpy(messageForSend+4, red+8, *size);
+		int sizeOfMsg = *size + 4;
+
+		while (true) {
+			int iResult = send(acceptedSocket, messageForSend, sizeOfMsg, 0);
+			if (iResult == SOCKET_ERROR)
+			{
+				printf("send failed with error: %d\n", WSAGetLastError());
+				break;
+			}
+			sizeOfMsg -= iResult;
+			messageForSend += iResult;
+			if (sizeOfMsg <= 0)
+				break;
+		}
+		
+
+
 
 		//free(red);
 		free(sub->queue);
