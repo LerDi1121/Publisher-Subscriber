@@ -102,7 +102,7 @@ bool Connect(SOCKET subscribeSocket)
 }
 bool Subscribe(SOCKET subscribeSocket)
 {
-	int por = 2;
+	int por = 1;
 
 	int iResult = send(subscribeSocket, (char*)(&por), 4, 0);
 

@@ -2,7 +2,8 @@
 enum Topic
 {
 	Analog = 0,
-	Status = 1
+	Status = 1,
+	Both = 2
 };
 
 

@@ -22,7 +22,7 @@ bool InitializeWindowsSockets()
 DWORD WINAPI RcvMessageFromSub(LPVOID param)
 {
 	SOCKET acceptedSocket = *((SOCKET*)param);
-
+	subscriber_t* sub;
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
@@ -61,7 +61,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	while (true)//subscribe
 	{
 		FD_SET(acceptedSocket, &set);
-		subscriber_t* sub;
+		
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
 			printf("SOCKET_ERROR");
@@ -76,6 +76,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 					int* msg = (int*)someBuff;
 					sub = CreateSubscriber(acceptedSocket, *msg);
 					AddSubscriberToList(&sub);
+					break;
 				}
 				else if (iResult == 0)
 				{
@@ -93,7 +94,15 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	}
 	while (true)
 	{
-		//slanje poruke na Sub
+		Sleep(5000);
+		char * red = (sub->queue);
+		if (red != NULL) {
+			int * popunjeno = (int *)red;
+			int * ukupno = (int *)(red + 4);
+			printf("****\n Pupunjenost reda %d od %d \n ***\n\n", *popunjeno, *ukupno);
+		}
+
+
 		printf("Slanje poruke na Suba ****\n ");
 		Sleep(5000);
 	}
@@ -148,35 +157,37 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 }
 DWORD WINAPI WriteMessage(LPVOID param)
 {
+	
 	char* message = (char*)param;
 	int* messageLength = (int*)message; // ukupna duzina poruke topic +type +text
 	Topic t = (Topic) * ((int*)(message + 4));
 	TypeTopic tt = (TypeTopic) * ((int*)(message + 8));
-	message = message + sizeof(Topic) + sizeof(TypeTopic) + 4;// pomeramo se na tekst
+	//message = message + sizeof(Topic) + sizeof(TypeTopic) + 4;// pomeramo se na tekst
+	message += 4;
 
-	int MessSize = *messageLength - (sizeof(Topic) + sizeof(TypeTopic));
-	char* Message = (char*)malloc(MessSize);
+	//int MessSize = *messageLength - (sizeof(Topic) + sizeof(TypeTopic));
+	//char* Message = (char*)malloc(MessSize);
 
-	memcpy(Message, message, MessSize);
+	//memcpy(Message, message, MessSize);
 
-	Message[MessSize] = '\0';
-	EnterCriticalSection(&cs);
-	printf("klinet je poslao  : %s.\n", Message);
-	printf("Topic : %d", t);
-	printf("Topic Type : %d", tt);
+	//Message[MessSize] = '\0';
+	
+	//printf("klinet je poslao  : %s.\n", Message);
+	//printf("Topic : %d", t);
+	//printf("Topic Type : %d", tt);
 	switch (t) {
-	case 1:
+	case 0:
 		AddMessageToQueue(message, *messageLength, &listAnalog);
 		break;
-	case 2:
+	case 1:
 		AddMessageToQueue(message, *messageLength, &listStatus);
 		break;
-	case 3:
+	case 2:
 		AddMessageToQueue(message, *messageLength, &listAnalog);
 		AddMessageToQueue(message, *messageLength, &listStatus);
 		break;
 	}
-	LeaveCriticalSection(&cs);
+	
 	return 1;
 }
 /// primanje poruke sa puba
@@ -274,13 +285,13 @@ SOCKET* CreateAcceptSocket(SOCKET  listenSocket)
 
 void AddSubscriberToList(subscriber_t** sub)
 {
-	if ((*sub)->topic == 1) {
+	if ((*sub)->topic == 0) {
 		AddToConcreteList(&listAnalog, sub);
 	}
-	if ((*sub)->topic == 2) {
+	if ((*sub)->topic == 1) {
 		AddToConcreteList(&listStatus, sub);
 	}
-	if ((*sub)->topic == 3) {
+	if ((*sub)->topic == 2) {
 		AddToConcreteList(&listAnalog, sub);
 		AddToConcreteList(&listStatus, sub);
 	}
@@ -333,13 +344,17 @@ void CreateQueue(char** msgQueue)
 	*msgQueue = ((char*)malloc(520));//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
 	int min = 0;
 	int max = 512;
-	memcpy(msgQueue, &min, 4);
-	memcpy(msgQueue + 4, &max, 4);
+	memcpy(*msgQueue, &min, 4);
+	memcpy(*msgQueue + 4, &max, 4);
 }
 void Enqueue(char** queue, char* msg, int msg_size) {
+	EnterCriticalSection(&cs);
+
 	int* lenght = (int*)(*queue);
 	int* ukupno = (int*)((*queue) + 4);
-	if (*lenght + msg_size > * ukupno)
+	int l = *lenght;
+	int u = *ukupno;
+	if (l + msg_size >  u)
 	{
 		//alociraj novu memoriju
 		char* newQueue = (char*)malloc((*ukupno) * 2);
@@ -369,6 +384,7 @@ void Enqueue(char** queue, char* msg, int msg_size) {
 		*lenght += (msg_size + 4);
 		printf("%d\n", *lenght);
 	}
+	LeaveCriticalSection(&cs);
 }
 SOCKET* CreatePublisherListenSocket()
 {
@@ -484,10 +500,9 @@ subscriber_t* CreateSubscriber(SOCKET socket, int topic) {
 	CreateQueue(&(temp->queue));
 	return temp;
 }
-void AddMessageToQueue(char* message, int msgSize, node_subscriber_t** list) {
+void AddMessageToQueue(  char* message, int msgSize, node_subscriber_t** list) {
 	if ((*list) == NULL)
 		return;
-
 	node_subscriber_t* current = (*list);
 
 	while (true) {
