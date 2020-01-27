@@ -96,11 +96,20 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	{
 		Sleep(5000);
 		char * red = (sub->queue);
-		if (red != NULL) {
-			int * popunjeno = (int *)red;
-			int * ukupno = (int *)(red + 4);
-			printf("****\n Pupunjenost reda %d od %d \n ***\n\n", *popunjeno, *ukupno);
-		}
+		if (red == NULL)
+			continue;
+		int * size = (int *)red;
+
+
+		char * messageForSend = (char *)malloc(*size + 4);
+		memcpy(messageForSend, size, 4);
+		memcpy(messageForSend+4, red+8, *size);
+
+		//free(red);
+		free(sub->queue);
+		sub->queue = NULL;
+		CreateQueue(&(sub->queue));
+		
 
 
 		printf("Slanje poruke na Suba ****\n ");
