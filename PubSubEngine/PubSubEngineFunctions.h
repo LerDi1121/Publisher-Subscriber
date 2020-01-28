@@ -43,8 +43,9 @@ typedef struct node_t_socket {
 } node_t_socket;
 
 typedef struct data_for_thread {
-	SOCKET socket;
-	char** msgQueue;
+	int size;
+	char* message;
+	node_subscriber_t** list;
 	//CRITICAL_SECTION * cs;
 }data_for_thread;
 
@@ -67,8 +68,8 @@ void CreateQueue(char** msgQueue);
 SOCKET* CreatePublisherListenSocket();
 SOCKET* CreateSubscriberListenSocket();
 
-DWORD WINAPI WriteMessage(LPVOID param);// za poseban tred koji ce upisivati u red
-void AddMessageToQueue(char* message, int msgSize, node_subscriber_t** list);
+void WriteMessage(char *message);// za poseban tred koji ce upisivati u red
+DWORD WINAPI  AddMessageToQueue(LPVOID param);
 
 DWORD WINAPI ListenSubscriber(LPVOID param);
 

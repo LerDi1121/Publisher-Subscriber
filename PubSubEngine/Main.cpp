@@ -63,13 +63,11 @@ int  main(int argc, char** argv)
 				//AddSocketToList(&listSockets, acceptedSocket);
 				DWORD print1ID;
 				HANDLE Thread;
-				data_for_thread  temp = *((data_for_thread*)malloc(sizeof(data_for_thread)));
-				temp.socket = publisherAcceptedSocket;
-				temp.msgQueue = &msg_queue;
+
 
 				printf("Pravljenje treda\n");
 
-				Thread = CreateThread(NULL, 0, &RcvMessage, &temp, 0, &print1ID);
+				Thread = CreateThread(NULL, 0, &RcvMessage, &publisherAcceptedSocket, 0, &print1ID);
 				AddToList(&listThread, Thread);
 
 				//	break;

@@ -118,19 +118,13 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 			if (sizeOfMsg <= 0)
 				break;
 		}
-		
-
-
-
 		//free(red);
 		free(sub->queue);
 		sub->queue = NULL;
 		CreateQueue(&(sub->queue));
-		
-
 
 		printf("Slanje poruke na Suba ****\n ");
-		Sleep(5000);
+		Sleep(4000);
 	}
 }
 
@@ -181,48 +175,74 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		Sleep(1000);
 	} while (true);
 }
-DWORD WINAPI WriteMessage(LPVOID param)
+
+void  WriteMessage(char* message)
 {
-	
-	char* message = (char*)param;
 	int* messageLength = (int*)message; // ukupna duzina poruke topic +type +text
 	Topic t = (Topic) * ((int*)(message + 4));
 	TypeTopic tt = (TypeTopic) * ((int*)(message + 8));
 	//message = message + sizeof(Topic) + sizeof(TypeTopic) + 4;// pomeramo se na tekst
 	message += 4;
-
-	//int MessSize = *messageLength - (sizeof(Topic) + sizeof(TypeTopic));
-	//char* Message = (char*)malloc(MessSize);
-
-	//memcpy(Message, message, MessSize);
-
-	//Message[MessSize] = '\0';
 	
-	//printf("klinet je poslao  : %s.\n", Message);
-	//printf("Topic : %d", t);
-	//printf("Topic Type : %d", tt);
 	switch (t) {
 	case 0:
-		AddMessageToQueue(message, *messageLength, &listAnalog);
-		break;
-	case 1:
-		AddMessageToQueue(message, *messageLength, &listStatus);
-		break;
-	case 2:
-		AddMessageToQueue(message, *messageLength, &listAnalog);
-		AddMessageToQueue(message, *messageLength, &listStatus);
+	{
+		DWORD print1ID;
+		HANDLE Thread;
+		data_for_thread *forAnalog = (data_for_thread*)malloc(sizeof(data_for_thread));
+		forAnalog->list = &listAnalog;
+		forAnalog->message = message;
+		forAnalog->size = *messageLength;
+		Thread = CreateThread(NULL, 0, &AddMessageToQueue, forAnalog, 0, &print1ID);
+		AddToList(&listThread, Thread);
 		break;
 	}
-	
-	return 1;
+	case 1:
+	{
+		DWORD print2ID;
+		HANDLE Thread1;
+		data_for_thread *forStatus = (data_for_thread*)malloc(sizeof(data_for_thread));
+		forStatus->list = &listStatus;
+		forStatus->message = message;
+		forStatus->size = *messageLength;
+		Thread1 = CreateThread(NULL, 0, &AddMessageToQueue, forStatus, 0, &print2ID);
+		AddToList(&listThread, Thread1);
+
+		break;
+	}
+	case 2:
+	{
+		//analog
+		DWORD printAnalog;
+		HANDLE ThreadAnalog;
+		data_for_thread *forAnalog2 = (data_for_thread*)malloc(sizeof(data_for_thread));
+		forAnalog2->list = &listAnalog;
+		forAnalog2->message = message;
+		forAnalog2->size = *messageLength;
+		ThreadAnalog = CreateThread(NULL, 0, &AddMessageToQueue, forAnalog2, 0, &printAnalog);
+		AddToList(&listThread, ThreadAnalog);
+		//status 
+		DWORD printStatus;
+		HANDLE ThreadStatus;
+		data_for_thread *forStatus2 = (data_for_thread*)malloc(sizeof(data_for_thread));
+		forStatus2->list = &listStatus;
+		forStatus2->message = message;
+		forStatus2->size = *messageLength;
+		ThreadStatus = CreateThread(NULL, 0, &AddMessageToQueue, forStatus2, 0, &printStatus);
+		AddToList(&listThread, ThreadStatus);
+
+		break;
+
+	}
+	}
 }
 /// primanje poruke sa puba
 DWORD WINAPI RcvMessage(LPVOID param)
 {
 	//SOCKET acceptedSocket = *((SOCKET *)param);
-	data_for_thread temp = *((data_for_thread*)param);
-	SOCKET acceptedSocket = temp.socket;
-	char* msgQueue = *(temp.msgQueue);
+	//data_for_thread temp = *((data_for_thread*)param);
+	SOCKET acceptedSocket = *((SOCKET*)param);
+	//char* msgQueue = *(temp.msgQueue);
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
@@ -255,11 +275,8 @@ DWORD WINAPI RcvMessage(LPVOID param)
 						char* messageForQueue = (char*)malloc((*velicinaPor) + 4);
 						memcpy(messageForQueue, velicinaPor, 4);
 						memcpy(messageForQueue + 4, Poruka, *velicinaPor);
-						DWORD print1ID;
-						HANDLE Thread;
-						printf("Pravljenje treda Za upis poruke u queue \n");
-						Thread = CreateThread(NULL, 0, &WriteMessage, messageForQueue, 0, &print1ID);
-						AddToList(&listThread, Thread);
+						WriteMessage(messageForQueue);
+					
 					}
 					else if (iResult == 0)
 					{
@@ -382,6 +399,10 @@ void Enqueue(char** queue, char* msg, int msg_size) {
 	int u = *ukupno;
 	if (l + msg_size >  u)
 	{
+		lenght = (int*)(*queue);
+		 ukupno = (int*)((*queue) + 4);
+
+		 // jednostavno se izgube vrednostu u lenght i ukupno 
 		//alociraj novu memoriju
 		char* newQueue = (char*)malloc((*ukupno) * 2);
 		*ukupno *= 2;
@@ -526,14 +547,17 @@ subscriber_t* CreateSubscriber(SOCKET socket, int topic) {
 	CreateQueue(&(temp->queue));
 	return temp;
 }
-void AddMessageToQueue(  char* message, int msgSize, node_subscriber_t** list) {
-	if ((*list) == NULL)
-		return;
-	node_subscriber_t* current = (*list);
+DWORD WINAPI  AddMessageToQueue(LPVOID param) {
+	data_for_thread *temp = ((data_for_thread*)param);
+
+	if (*(temp->list) == NULL)
+		//free(temp);
+		return -1;
+	node_subscriber_t* current = (*(temp->list));
 
 	while (true) {
 		char* queue = (*(current->subscriber))->queue;
-		Enqueue(&queue, message, msgSize);
+		Enqueue(&queue, temp->message, temp->size);
 		if (current->next == NULL) {
 			break;
 		}
@@ -541,4 +565,6 @@ void AddMessageToQueue(  char* message, int msgSize, node_subscriber_t** list) {
 			current = current->next;
 		}
 	}
+	//free( temp);
+	return 1;
 }
