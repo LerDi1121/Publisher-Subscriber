@@ -95,12 +95,19 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	while (true)
 	{
 		Sleep(5000);
+		EnterCriticalSection(&cs);
 		char * red = (sub->queue);
 		if (red == NULL)
+		{
+			LeaveCriticalSection(&cs);
 			continue;
+		}
+		
+		
+		sub->queue = NULL;
+		CreateQueue(&(sub->queue));
+		LeaveCriticalSection(&cs);
 		int * size = (int *)red;
-
-
 		char * messageForSend = (char *)malloc(*size + 4);
 		memcpy(messageForSend, size, 4);
 		memcpy(messageForSend+4, red+8, *size);
@@ -118,10 +125,10 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 			if (sizeOfMsg <= 0)
 				break;
 		}
-		//free(red);
-		free(sub->queue);
+		free(red);
+		/*free(sub->queue);
 		sub->queue = NULL;
-		CreateQueue(&(sub->queue));
+		CreateQueue(&(sub->queue));*/
 
 		printf("Slanje poruke na Suba ****\n ");
 		Sleep(4000);
