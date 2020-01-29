@@ -103,7 +103,6 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 			continue;
 		}
 		
-		
 		sub->queue = NULL;
 		CreateQueue(&(sub->queue));
 		LeaveCriticalSection(&cs);
@@ -112,12 +111,14 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		memcpy(messageForSend, size, 4);
 		memcpy(messageForSend+4, red+8, *size);
 		int sizeOfMsg = *size + 4;
-
+		bool flag = FALSE;
 		while (true) {
+			
 			int iResult = send(acceptedSocket, messageForSend, sizeOfMsg, 0);
 			if (iResult == SOCKET_ERROR)
 			{
 				printf("send failed with error: %d\n", WSAGetLastError());
+				flag = TRUE;
 				break;
 			}
 			sizeOfMsg -= iResult;
@@ -126,13 +127,18 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				break;
 		}
 		free(red);
-		/*free(sub->queue);
-		sub->queue = NULL;
-		CreateQueue(&(sub->queue));*/
 
+		if (flag)
+			break;
 		printf("Slanje poruke na Suba ****\n ");
 		Sleep(4000);
 	}
+	subscriber_t *temp = sub;
+	sub = NULL;
+	free(temp);
+	
+	closesocket(acceptedSocket);
+	return -1;
 }
 
 ///slusanje za subove
@@ -151,7 +157,6 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 	iResult = ioctlsocket(subscriberListenSocket, FIONBIO, &temp);
 
 	printf("Server initialized, waiting for SUBSCRIBER.\n");
-
 	FD_SET setSub;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
@@ -163,7 +168,8 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		FD_SET(subscriberListenSocket, &setSub);
 		iResult = select(0 /* ignored */, &setSub, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
-			continue;
+			closesocket(subscriberListenSocket);
+			return INVALID_SOCKET;
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(subscriberListenSocket, &setSub)) {
@@ -175,7 +181,6 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 
 				Thread = CreateThread(NULL, 0, &RcvMessageFromSub, &subscriberAcceptedSocket, 0, &print1ID);
 				AddToList(&listThread, Thread);
-
 				//	break;
 			}
 		}
@@ -188,7 +193,6 @@ void  WriteMessage(char* message)
 	int* messageLength = (int*)message; // ukupna duzina poruke topic +type +text
 	Topic t = (Topic) * ((int*)(message + 4));
 	TypeTopic tt = (TypeTopic) * ((int*)(message + 8));
-	//message = message + sizeof(Topic) + sizeof(TypeTopic) + 4;// pomeramo se na tekst
 	message += 4;
 	
 	switch (t) {
@@ -239,17 +243,14 @@ void  WriteMessage(char* message)
 		AddToList(&listThread, ThreadStatus);
 
 		break;
-
 	}
 	}
 }
 /// primanje poruke sa puba
 DWORD WINAPI RcvMessage(LPVOID param)
 {
-	//SOCKET acceptedSocket = *((SOCKET *)param);
-	//data_for_thread temp = *((data_for_thread*)param);
 	SOCKET acceptedSocket = *((SOCKET*)param);
-	//char* msgQueue = *(temp.msgQueue);
+	
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
@@ -263,8 +264,9 @@ DWORD WINAPI RcvMessage(LPVOID param)
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 
 		if (iResult == SOCKET_ERROR) {
-			printf("SOCKET_ERROR");
-			continue;
+			closesocket(acceptedSocket);
+			return -1 ;
+
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(acceptedSocket, &set)) {
@@ -406,16 +408,28 @@ void Enqueue(char** queue, char* msg, int msg_size) {
 	int u = *ukupno;
 	if (l + msg_size >  u)
 	{
+	
 		lenght = (int*)(*queue);
 		 ukupno = (int*)((*queue) + 4);
-
+		 if (lenght == NULL)
+			 return;
 		 // jednostavno se izgube vrednostu u lenght i ukupno 
 		//alociraj novu memoriju
-		char* newQueue = (char*)malloc((*ukupno) * 2);
-		*ukupno *= 2;
-		memcpy(newQueue, (*queue), *lenght + 8);
+		/*char* newQueue = (char*)malloc(u * 2);
+		u *= 2;
+		memcpy(newQueue, (*queue), l + 8);
 		free((*queue));
 		(*queue) = newQueue;
+			memcpy( (*queue), &l,4);
+			memcpy( (*queue)+4, &u,4);*/
+		 char* newQueue = (char*)malloc((*ukupno) * 2);
+		 *ukupno *= 2;
+		 memcpy(newQueue, (*queue), *lenght + 8);
+		 free((*queue));
+		 (*queue) = newQueue;
+
+
+
 		printf("\n nova memorija  ***********\n");
 
 		int* lenght = (int*)(*queue);
@@ -443,9 +457,8 @@ void Enqueue(char** queue, char* msg, int msg_size) {
 SOCKET* CreatePublisherListenSocket()
 {
 	SOCKET* listenSocketRetVal = (SOCKET*)malloc(sizeof(SOCKET));
-
+	SOCKET* invalidSocket= NULL;
 	addrinfo* resultingAddress = NULL;
-
 	addrinfo hints;
 
 	memset(&hints, 0, sizeof(hints));
@@ -460,10 +473,9 @@ SOCKET* CreatePublisherListenSocket()
 	{
 		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();
-		//return 1;
+		return invalidSocket;
 	}
 
-	// Create a SOCKET for connecting to server
 	*listenSocketRetVal = socket(AF_INET,      // IPv4 address famly
 		SOCK_STREAM,  // stream socket
 		IPPROTO_TCP); // TCP
@@ -473,11 +485,9 @@ SOCKET* CreatePublisherListenSocket()
 		printf("socket failed with error: %ld\n", WSAGetLastError());
 		freeaddrinfo(resultingAddress);
 		WSACleanup();
-		//return ;
+		return invalidSocket;
 	}
 
-	// Setup the TCP listening socket - bind port number and local address
-	// to socket
 	iResult = bind(*listenSocketRetVal, resultingAddress->ai_addr, (int)resultingAddress->ai_addrlen);
 	if (iResult == SOCKET_ERROR)
 	{
@@ -485,7 +495,7 @@ SOCKET* CreatePublisherListenSocket()
 		freeaddrinfo(resultingAddress);
 		closesocket(*listenSocketRetVal);
 		WSACleanup();
-		//return 1;
+		return invalidSocket;
 	}
 
 	unsigned long int nonBlockingMode = 1;
@@ -496,9 +506,8 @@ SOCKET* CreatePublisherListenSocket()
 SOCKET* CreateSubscriberListenSocket()
 {
 	SOCKET* listenSocketRetVal = (SOCKET*)malloc(sizeof(SOCKET));
-
+	SOCKET* invalidSocket = NULL;
 	addrinfo* resultingAddress = NULL;
-
 	addrinfo hints;
 
 	memset(&hints, 0, sizeof(hints));
@@ -507,16 +516,13 @@ SOCKET* CreateSubscriberListenSocket()
 	hints.ai_protocol = IPPROTO_TCP; // Use TCP protocol
 	hints.ai_flags = AI_PASSIVE;     //
 
-	// Resolve the server address and port
 	int iResult = getaddrinfo(NULL, DEFAULT_PORT_FOR_SUB, &hints, &resultingAddress);
 	if (iResult != 0)
 	{
 		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();
-		//return 1;
+		return invalidSocket;
 	}
-
-	// Create a SOCKET for connecting to server
 	*listenSocketRetVal = socket(AF_INET,      // IPv4 address famly
 		SOCK_STREAM,  // stream socket
 		IPPROTO_TCP); // TCP
@@ -526,11 +532,9 @@ SOCKET* CreateSubscriberListenSocket()
 		printf("socket failed with error: %ld\n", WSAGetLastError());
 		freeaddrinfo(resultingAddress);
 		WSACleanup();
-		//return ;
+		return invalidSocket;
 	}
 
-	// Setup the TCP listening socket - bind port number and local address
-	// to socket
 	iResult = bind(*listenSocketRetVal, resultingAddress->ai_addr, (int)resultingAddress->ai_addrlen);
 	if (iResult == SOCKET_ERROR)
 	{
@@ -538,7 +542,7 @@ SOCKET* CreateSubscriberListenSocket()
 		freeaddrinfo(resultingAddress);
 		closesocket(*listenSocketRetVal);
 		WSACleanup();
-		//return 1;
+		return invalidSocket;
 	}
 	freeaddrinfo(resultingAddress);
 	unsigned long int nonBlockingMode = 1;
@@ -556,19 +560,26 @@ subscriber_t* CreateSubscriber(SOCKET socket, int topic) {
 }
 DWORD WINAPI  AddMessageToQueue(LPVOID param) {
 	data_for_thread *temp = ((data_for_thread*)param);
-
+	
 	if (*(temp->list) == NULL)
 		//free(temp);
 		return -1;
 	node_subscriber_t* current = (*(temp->list));
 
 	while (true) {
-		char* queue = (*(current->subscriber))->queue;
-		Enqueue(&queue, temp->message, temp->size);
-		if (current->next == NULL) {
-			break;
+		if (*(current->subscriber )!= NULL)/////////////////////////*****************************************
+		{
+			char* queue = (*(current->subscriber))->queue;
+			Enqueue(&queue, temp->message, temp->size);
+			if (current->next == NULL) {
+				break;
+			}
+			else {
+				current = current->next;
+			}
 		}
-		else {
+		else
+		{
 			current = current->next;
 		}
 	}

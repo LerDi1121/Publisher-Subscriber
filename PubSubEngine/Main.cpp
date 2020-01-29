@@ -83,7 +83,7 @@ int  main(int argc, char** argv)
 		printf("shutdown failed with error: %d\n", WSAGetLastError());
 		closesocket(publisherAcceptedSocket);
 		WSACleanup();
-		return 1;
+		//return 1;
 	}
 
 	DeleteCriticalSection(&cs);
