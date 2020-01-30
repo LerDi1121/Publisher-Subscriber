@@ -1,5 +1,5 @@
 #include "PubSubEngineFunctions.h"
-
+int SubCount = 0;
 CRITICAL_SECTION cs;
 char* msg_queue;
 node_t* listThread = NULL;
@@ -135,6 +135,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	}
 	subscriber_t *temp = sub;
 	sub = NULL;
+	RemoveSubscriber(temp);
 	free(temp);
 	
 	closesocket(acceptedSocket);
@@ -399,8 +400,8 @@ void CreateQueue(char** msgQueue)
 	memcpy(*msgQueue, &min, 4);
 	memcpy(*msgQueue + 4, &max, 4);
 }
-void Enqueue(char** queue, char* msg, int msg_size) {
-	EnterCriticalSection(&cs);
+char* Enqueue(char** queue, char* msg, int msg_size) {
+	
 
 	int* lenght = (int*)(*queue);
 	int* ukupno = (int*)((*queue) + 4);
@@ -411,8 +412,7 @@ void Enqueue(char** queue, char* msg, int msg_size) {
 	
 		lenght = (int*)(*queue);
 		 ukupno = (int*)((*queue) + 4);
-		 if (lenght == NULL)
-			 return;
+	
 		 // jednostavno se izgube vrednostu u lenght i ukupno 
 		//alociraj novu memoriju
 		/*char* newQueue = (char*)malloc(u * 2);
@@ -452,7 +452,8 @@ void Enqueue(char** queue, char* msg, int msg_size) {
 		*lenght += (msg_size + 4);
 		printf("%d\n", *lenght);
 	}
-	LeaveCriticalSection(&cs);
+
+	return *queue;
 }
 SOCKET* CreatePublisherListenSocket()
 {
@@ -550,14 +551,62 @@ SOCKET* CreateSubscriberListenSocket()
 
 	return listenSocketRetVal;
 }
+void RemoveSubscriberFromList(int id, node_subscriber_t** list)
+{
+	node_subscriber_t* current = *list;
+
+	node_subscriber_t* previous=NULL;
+	subscriber * tempSub = *(current->subscriber);
+	if (current != NULL && tempSub->id == id)
+	{
+		EnterCriticalSection(&cs);
+		*list = current->next;
+		free(current);
+		LeaveCriticalSection(&cs);
+		return;
+
+	}
+	while (current->next != NULL && tempSub->id != id) {
+
+		previous = current;
+		current = current->next;
+		tempSub = *(current->subscriber);
+
+	}
+	if (current == NULL) return;
+
+	EnterCriticalSection(&cs);
+	previous->next = current->next;
+	free(current);
+	LeaveCriticalSection(&cs);
+}
+void RemoveSubscriber(subscriber_t* sub)
+{
+	if (sub->topic == 0)
+	{
+		RemoveSubscriberFromList(sub->id, &listAnalog);
+	}
+	else if (sub->topic == 1)
+	{
+		RemoveSubscriberFromList(sub->id, &listStatus);
+	}
+	else
+	{
+		RemoveSubscriberFromList(sub->id, &listStatus);
+		RemoveSubscriberFromList(sub->id, &listAnalog);
+	}
+}
+
 subscriber_t* CreateSubscriber(SOCKET socket, int topic) {
 	subscriber_t* temp = (subscriber_t*)malloc(sizeof(subscriber_t));
 	temp->socket = socket;
 	temp->topic = topic;
 	temp->queue = NULL;
+	temp->id = SubCount++;
 	CreateQueue(&(temp->queue));
 	return temp;
 }
+
 DWORD WINAPI  AddMessageToQueue(LPVOID param) {
 	data_for_thread *temp = ((data_for_thread*)param);
 	
@@ -570,7 +619,9 @@ DWORD WINAPI  AddMessageToQueue(LPVOID param) {
 		if (*(current->subscriber )!= NULL)/////////////////////////*****************************************
 		{
 			char* queue = (*(current->subscriber))->queue;
-			Enqueue(&queue, temp->message, temp->size);
+			EnterCriticalSection(&cs);
+			(*(current->subscriber))->queue=Enqueue(&queue, temp->message, temp->size);
+			LeaveCriticalSection(&cs);
 			if (current->next == NULL) {
 				break;
 			}
