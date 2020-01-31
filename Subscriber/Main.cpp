@@ -1,4 +1,5 @@
-#include "SubscriberFunctions.h"
+#include "..\common\SubscriberFunctions.h"
+#include "..\common\Communication.h"
 
 int  main(int argc, char** argv)
 {

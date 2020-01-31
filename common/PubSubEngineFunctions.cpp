@@ -6,21 +6,11 @@ node_t* listThread = NULL;
 node_subscriber_t* listAnalog = NULL;
 node_subscriber_t* listStatus = NULL;
 
-bool InitializeWindowsSockets()
-{
-	WSADATA wsaData;
-	// Initialize windows sockets library for this process
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-	{
-		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
-		return false;
-	}
-	return true;
-}
+
 void InitializeOurCriticalSection()
-	{
+{
 	InitializeCriticalSection(&cs);
-	}
+}
 void DeleteOurCriticalSection()
 {
 	DeleteCriticalSection(&cs);
@@ -34,7 +24,7 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 		printf("listen failed with error: %d\n", WSAGetLastError());
 		closesocket(publisherListenSocket);
 		WSACleanup();
-		return ;
+		return;
 	}
 	SOCKET publisherAcceptedSocket = INVALID_SOCKET;
 
@@ -73,16 +63,8 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 		}
 		///
 	} while (1);
+	CloseSocket(&publisherAcceptedSocket);
 
-	iResult = shutdown(publisherAcceptedSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
-		closesocket(publisherAcceptedSocket);
-		WSACleanup();
-		//return 1;
-	}
-	closesocket(publisherAcceptedSocket);
 
 }
 ///primanje poruke suba i slanje na njega
@@ -114,12 +96,12 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				else if (iResult == 0)
 				{
 					printf("Connection with client closed.\n");
-					closesocket(acceptedSocket);
+					CloseSocket(&acceptedSocket);
 				}
 				else
 				{
 					printf("recv failed with error: %d\n", WSAGetLastError());
-					closesocket(acceptedSocket);
+					CloseSocket(&acceptedSocket);
 				}
 			}
 		}
@@ -128,7 +110,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	while (true)//subscribe
 	{
 		FD_SET(acceptedSocket, &set);
-		
+
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
 			printf("SOCKET_ERROR");
@@ -148,12 +130,12 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				else if (iResult == 0)
 				{
 					printf("Connection with client closed.\n");
-					closesocket(acceptedSocket);
+					CloseSocket(&acceptedSocket);
 				}
 				else
 				{
 					printf("recv failed with error: %d\n", WSAGetLastError());
-					closesocket(acceptedSocket);
+					CloseSocket(&acceptedSocket);
 				}
 			}
 		}
@@ -163,25 +145,25 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	{
 		Sleep(5000);
 		EnterCriticalSection(&cs);
-		char * red = (sub->queue);
+		char* red = (sub->queue);
 		if (red == NULL)
 		{
 			LeaveCriticalSection(&cs);
 			continue;
 		}
-		
+
 		sub->queue = NULL;
 		CreateQueue(&(sub->queue));
 		LeaveCriticalSection(&cs);
-		int * size = (int *)red;
-		char * messageForSend = (char *)malloc(*size + sizeof(int));
+		int* size = (int*)red;
+		char* messageForSend = (char*)malloc(*size + sizeof(int));
 		memcpy(messageForSend, size, sizeof(int));
-		memcpy(messageForSend+ sizeof(int), red+ sizeof(int)*2, *size);
+		memcpy(messageForSend + sizeof(int), red + sizeof(int) * 2, *size);
 		int sizeOfMsg = *size + sizeof(int);
 		char* msgBegin = messageForSend;
 		bool flag = FALSE;
 		while (true) {
-			
+
 			int iResult = send(acceptedSocket, messageForSend, sizeOfMsg, 0);
 			if (iResult == SOCKET_ERROR)
 			{
@@ -207,9 +189,8 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	RemoveSubscriber(sub);
 	//sub = NULL;
 	free(sub);
-	
-	
-	closesocket(acceptedSocket);
+
+	CloseSocket(&acceptedSocket);
 	return -1;
 }
 
@@ -221,7 +202,7 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 	if (iResult == SOCKET_ERROR)
 	{
 		printf("listen failed with error: %d\n", WSAGetLastError());
-		closesocket(subscriberListenSocket);
+		CloseSocket(&subscriberListenSocket);
 		WSACleanup();
 		return 1;
 	}
@@ -240,7 +221,8 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		FD_SET(subscriberListenSocket, &setSub);
 		iResult = select(0 /* ignored */, &setSub, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
-			closesocket(subscriberListenSocket);
+
+			CloseSocket(&subscriberListenSocket);
 			return INVALID_SOCKET;
 		}
 		else if (iResult != 0) {
@@ -266,13 +248,13 @@ void  WriteMessage(char* message)
 	Topic t = (Topic) * ((int*)(message + 4));
 	TypeTopic tt = (TypeTopic) * ((int*)(message + 8));
 	message += 4;
-	
+
 	switch (t) {
 	case 0:
 	{
 		DWORD print1ID;
 		HANDLE Thread;
-		data_for_thread *forAnalog = (data_for_thread*)malloc(sizeof(data_for_thread));
+		data_for_thread* forAnalog = (data_for_thread*)malloc(sizeof(data_for_thread));
 		forAnalog->list = &listAnalog;
 		forAnalog->message = message;
 		forAnalog->size = *messageLength;
@@ -284,7 +266,7 @@ void  WriteMessage(char* message)
 	{
 		DWORD print2ID;
 		HANDLE Thread1;
-		data_for_thread *forStatus = (data_for_thread*)malloc(sizeof(data_for_thread));
+		data_for_thread* forStatus = (data_for_thread*)malloc(sizeof(data_for_thread));
 		forStatus->list = &listStatus;
 		forStatus->message = message;
 		forStatus->size = *messageLength;
@@ -298,7 +280,7 @@ void  WriteMessage(char* message)
 		//analog
 		DWORD printAnalog;
 		HANDLE ThreadAnalog;
-		data_for_thread *forAnalog2 = (data_for_thread*)malloc(sizeof(data_for_thread));
+		data_for_thread* forAnalog2 = (data_for_thread*)malloc(sizeof(data_for_thread));
 		forAnalog2->list = &listAnalog;
 		forAnalog2->message = message;
 		forAnalog2->size = *messageLength;
@@ -307,7 +289,7 @@ void  WriteMessage(char* message)
 		//status 
 		DWORD printStatus;
 		HANDLE ThreadStatus;
-		data_for_thread *forStatus2 = (data_for_thread*)malloc(sizeof(data_for_thread));
+		data_for_thread* forStatus2 = (data_for_thread*)malloc(sizeof(data_for_thread));
 		forStatus2->list = &listStatus;
 		forStatus2->message = message;
 		forStatus2->size = *messageLength;
@@ -322,7 +304,7 @@ void  WriteMessage(char* message)
 DWORD WINAPI RcvMessage(LPVOID param)
 {
 	SOCKET acceptedSocket = *((SOCKET*)param);
-	
+
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
@@ -336,8 +318,8 @@ DWORD WINAPI RcvMessage(LPVOID param)
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 
 		if (iResult == SOCKET_ERROR) {
-			closesocket(acceptedSocket);
-			return -1 ;
+			CloseSocket(&acceptedSocket);
+			return -1;
 
 		}
 		else if (iResult != 0) {
@@ -357,35 +339,35 @@ DWORD WINAPI RcvMessage(LPVOID param)
 						memcpy(messageForQueue, velicinaPor, 4);
 						memcpy(messageForQueue + 4, Poruka, *velicinaPor);
 						WriteMessage(messageForQueue);
-					
+
 					}
 					else if (iResult == 0)
 					{
 						printf("Connection with client closed.\n");
 						printf("The publisher is disconnected ");
-						closesocket(acceptedSocket);
+						CloseSocket(&acceptedSocket);
 						return false;
 					}
 					else
 					{
 						printf(" recv failed with error: %d\n", WSAGetLastError());
 						printf("The publisher is disconnected ");
-						closesocket(acceptedSocket);
+						CloseSocket(&acceptedSocket);
 						return false;
 					}
 				}
 				else if (iResult == 0)
 				{
-					printf("Connection with client closed.\n"); 
+					printf("Connection with client closed.\n");
 					printf("The publisher is disconnected ");
-					closesocket(acceptedSocket);
+					CloseSocket(&acceptedSocket);
 					return false;
 				}
 				else
 				{
 					printf(" recv failed with error: %d\n", WSAGetLastError());
 					printf("The publisher is disconnected ");
-					closesocket(acceptedSocket);
+					CloseSocket(&acceptedSocket);
 					return false;
 				}
 			}
@@ -402,7 +384,8 @@ SOCKET* CreateAcceptSocket(SOCKET  listenSocket)
 	if (*acceptedSocket == INVALID_SOCKET)
 	{
 		printf("accept failed with error: %d\n", WSAGetLastError());
-		closesocket(listenSocket);
+		CloseSocket(&listenSocket);
+		
 		WSACleanup();
 	}
 
@@ -476,25 +459,25 @@ void CreateQueue(char** msgQueue)
 	memcpy(*msgQueue + 4, &max, 4);
 }
 char* Enqueue(char** queue, char* msg, int msg_size) {
-	
+
 
 	int* lenght = (int*)(*queue);
 	int* max = (int*)((*queue) + 4);
 
-	if (* lenght + msg_size >  *max)
+	if (*lenght + msg_size > * max)
 	{
-		 char* newQueue = (char*)malloc((*max) * 2);
-		 *max *= 2;
-		 memcpy(newQueue, (*queue), *lenght + 8);
-		 free((*queue));
-		 (*queue) = newQueue;
+		char* newQueue = (char*)malloc((*max) * 2);
+		*max *= 2;
+		memcpy(newQueue, (*queue), *lenght + 8);
+		free((*queue));
+		(*queue) = newQueue;
 
 		printf("\n nova memorija  ***********\n");
 
 		lenght = (int*)(*queue);
 		max = (int*)((*queue) + 4);
 		memcpy((*queue) + (*lenght) + sizeof(int) * 2, &msg_size, sizeof(int));
-		*lenght +=sizeof(int);
+		*lenght += sizeof(int);
 		memcpy((*queue) + (*lenght) + sizeof(int) * 2, msg, msg_size);
 		*lenght += msg_size;
 		printf("%d\n", *lenght);
@@ -513,7 +496,7 @@ char* Enqueue(char** queue, char* msg, int msg_size) {
 SOCKET* CreatePublisherListenSocket()
 {
 	SOCKET* listenSocketRetVal = (SOCKET*)malloc(sizeof(SOCKET));
-	SOCKET* invalidSocket= NULL;
+	SOCKET* invalidSocket = NULL;
 	addrinfo* resultingAddress = NULL;
 	addrinfo hints;
 
@@ -549,7 +532,8 @@ SOCKET* CreatePublisherListenSocket()
 	{
 		printf("bind failed with error: %d\n", WSAGetLastError());
 		freeaddrinfo(resultingAddress);
-		closesocket(*listenSocketRetVal);
+	
+		CloseSocket(listenSocketRetVal);
 		WSACleanup();
 		return invalidSocket;
 	}
@@ -596,7 +580,7 @@ SOCKET* CreateSubscriberListenSocket()
 	{
 		printf("bind failed with error: %d\n", WSAGetLastError());
 		freeaddrinfo(resultingAddress);
-		closesocket(*listenSocketRetVal);
+		CloseSocket(listenSocketRetVal);
 		WSACleanup();
 		return invalidSocket;
 	}
@@ -610,19 +594,19 @@ void RemoveSubscriberFromList(int id, node_subscriber_t** list)
 {
 	node_subscriber_t* current = *list;
 
-	node_subscriber_t* previous=NULL;
-	subscriber * tempSub = *(current->subscriber);
-	if (current != NULL && tempSub!=NULL)
+	node_subscriber_t* previous = NULL;
+	subscriber* tempSub = *(current->subscriber);
+	if (current != NULL && tempSub != NULL)
 	{
 		if (tempSub->id == id)
 		{
-		EnterCriticalSection(&cs);
-		*list = current->next;
-		free(current);
-		LeaveCriticalSection(&cs);
-		return;
+			EnterCriticalSection(&cs);
+			*list = current->next;
+			free(current);
+			LeaveCriticalSection(&cs);
+			return;
 		}
-		
+
 
 	}
 	while (current->next != NULL && tempSub->id != id) {
@@ -667,19 +651,19 @@ subscriber_t* CreateSubscriber(SOCKET socket, int topic) {
 }
 
 DWORD WINAPI  AddMessageToQueue(LPVOID param) {
-	data_for_thread *temp = ((data_for_thread*)param);
-	
+	data_for_thread* temp = ((data_for_thread*)param);
+
 	if (*(temp->list) == NULL)
 		//free(temp);
 		return -1;
 	node_subscriber_t* current = (*(temp->list));
 
 	while (true) {
-		if (*(current->subscriber )!= NULL)/////////////////////////*****************************************
+		if (*(current->subscriber) != NULL)
 		{
 			char* queue = (*(current->subscriber))->queue;
 			EnterCriticalSection(&cs);
-			(*(current->subscriber))->queue=Enqueue(&queue, temp->message, temp->size);
+			(*(current->subscriber))->queue = Enqueue(&queue, temp->message, temp->size);
 			LeaveCriticalSection(&cs);
 			if (current->next == NULL) {
 				break;

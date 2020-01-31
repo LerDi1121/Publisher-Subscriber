@@ -39,7 +39,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
@@ -125,6 +125,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="AllEnums.h" />
+    <ClInclude Include="Communication.h" />
+    <ClInclude Include="PubSubEngineFunctions.h" />
+    <ClInclude Include="PubSubEngineStruct.h" />
+    <ClInclude Include="SubscriberFunctions.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Communications.cpp" />
+    <ClCompile Include="PubSubEngineFunctions.cpp" />
+    <ClCompile Include="SucscriberFunctions.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

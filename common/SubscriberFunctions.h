@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <conio.h>
-#include  "..\common\AllEnums.h"
+#include  "AllEnums.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")
@@ -20,7 +20,7 @@
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
 
 void PrintMessages(char* msg, int totalSize);
-bool InitializeWindowsSockets();
+
 bool Connect(SOCKET subscribeSocket);
 bool Subscribe(SOCKET subscribeSocket);
-int SubscriptionChoice();
+int SubscriptionChoice(); 
