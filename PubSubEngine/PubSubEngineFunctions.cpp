@@ -17,7 +17,74 @@ bool InitializeWindowsSockets()
 	}
 	return true;
 }
+void InitializeOurCriticalSection()
+	{
+	InitializeCriticalSection(&cs);
+	}
+void DeleteOurCriticalSection()
+{
+	DeleteCriticalSection(&cs);
+}
 
+void LitenForPublisher(SOCKET publisherListenSocket)
+{
+	int iResult = listen(publisherListenSocket, SOMAXCONN);
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("listen failed with error: %d\n", WSAGetLastError());
+		closesocket(publisherListenSocket);
+		WSACleanup();
+		return ;
+	}
+	SOCKET publisherAcceptedSocket = INVALID_SOCKET;
+
+	iResult = ioctlsocket(publisherAcceptedSocket, FIONBIO, (u_long*)1);
+
+	printf("Server initialized, waiting for clients.\n");
+	FD_SET set;
+	timeval timeVal;
+	timeVal.tv_sec = 1;
+	timeVal.tv_usec = 0;
+	do
+	{
+		// konektovanje
+		FD_ZERO(&set);
+		FD_SET(publisherListenSocket, &set);
+
+		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
+		if (iResult == SOCKET_ERROR) {
+			//desila se greska prilikom poziva funkcije
+		}
+		else if (iResult != 0) {
+			if (FD_ISSET(publisherListenSocket, &set)) {
+				publisherAcceptedSocket = *CreateAcceptSocket(publisherListenSocket);
+				//AddSocketToList(&listSockets, acceptedSocket);
+				DWORD print1ID;
+				HANDLE Thread;
+
+
+				printf("Pravljenje treda\n");
+
+				Thread = CreateThread(NULL, 0, &RcvMessage, &publisherAcceptedSocket, 0, &print1ID);
+				AddToList(&listThread, Thread);
+
+				//	break;
+			}
+		}
+		///
+	} while (1);
+
+	iResult = shutdown(publisherAcceptedSocket, SD_SEND);
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		closesocket(publisherAcceptedSocket);
+		WSACleanup();
+		//return 1;
+	}
+	closesocket(publisherAcceptedSocket);
+
+}
 ///primanje poruke suba i slanje na njega
 DWORD WINAPI RcvMessageFromSub(LPVOID param)
 {
@@ -119,6 +186,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 			if (iResult == SOCKET_ERROR)
 			{
 				printf("send failed with error: %d\n", WSAGetLastError());
+				printf("Unsubscribe");
 				flag = TRUE;
 				break;
 			}
@@ -135,10 +203,10 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		free(msgBegin);
 		Sleep(4000);
 	}
-	subscriber_t *temp = sub;
-	sub = NULL;
-	RemoveSubscriber(temp);
-	free(temp);
+	//subscriber_t *temp = sub;
+	RemoveSubscriber(sub);
+	//sub = NULL;
+	free(sub);
 	
 	
 	closesocket(acceptedSocket);
@@ -294,25 +362,29 @@ DWORD WINAPI RcvMessage(LPVOID param)
 					else if (iResult == 0)
 					{
 						printf("Connection with client closed.\n");
+						printf("The publisher is disconnected ");
 						closesocket(acceptedSocket);
 						return false;
 					}
 					else
 					{
-						printf("1 recv failed with error: %d\n", WSAGetLastError());
+						printf(" recv failed with error: %d\n", WSAGetLastError());
+						printf("The publisher is disconnected ");
 						closesocket(acceptedSocket);
 						return false;
 					}
 				}
 				else if (iResult == 0)
 				{
-					printf("Connection with client closed.\n");
+					printf("Connection with client closed.\n"); 
+					printf("The publisher is disconnected ");
 					closesocket(acceptedSocket);
 					return false;
 				}
 				else
 				{
-					printf(" 2recv failed with error: %d\n", WSAGetLastError());
+					printf(" recv failed with error: %d\n", WSAGetLastError());
+					printf("The publisher is disconnected ");
 					closesocket(acceptedSocket);
 					return false;
 				}
@@ -540,13 +612,17 @@ void RemoveSubscriberFromList(int id, node_subscriber_t** list)
 
 	node_subscriber_t* previous=NULL;
 	subscriber * tempSub = *(current->subscriber);
-	if (current != NULL && tempSub->id == id)
+	if (current != NULL && tempSub!=NULL)
 	{
+		if (tempSub->id == id)
+		{
 		EnterCriticalSection(&cs);
 		*list = current->next;
 		free(current);
 		LeaveCriticalSection(&cs);
 		return;
+		}
+		
 
 	}
 	while (current->next != NULL && tempSub->id != id) {

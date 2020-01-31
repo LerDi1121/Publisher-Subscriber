@@ -7,9 +7,9 @@ int  main(int argc, char** argv)
 	SOCKET publisherListenSocket = INVALID_SOCKET;
 	SOCKET subscriberListenSocket = INVALID_SOCKET;
 
-	SOCKET publisherAcceptedSocket = INVALID_SOCKET;
+	
 	SOCKET subscriberAcceptedSocket = INVALID_SOCKET;
-	InitializeCriticalSection(&cs);
+	InitializeOurCriticalSection();
 
 	//CreateQueue();
 
@@ -29,69 +29,18 @@ int  main(int argc, char** argv)
 	ThreadSub = CreateThread(NULL, 0, &ListenSubscriber, &subscriberListenSocket, 0, &printSubID);
 	AddToList(&listThread, ThreadSub);
 
-	iResult = listen(publisherListenSocket, SOMAXCONN);
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("listen failed with error: %d\n", WSAGetLastError());
-		closesocket(publisherListenSocket);
-		WSACleanup();
-		return 1;
-	}
-	iResult = ioctlsocket(publisherAcceptedSocket, FIONBIO, (u_long*)1);
-
-	printf("Server initialized, waiting for clients.\n");
-	FD_SET set;
-	timeval timeVal;
-	timeVal.tv_sec = 1;
-	timeVal.tv_usec = 0;
-
-	/* primanje poruka*/
-
-	do
-	{
-		// konektovanje
-		FD_ZERO(&set);
-		FD_SET(publisherListenSocket, &set);
-
-		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
-		if (iResult == SOCKET_ERROR) {
-			//desila se greska prilikom poziva funkcije
-		}
-		else if (iResult != 0) {
-			if (FD_ISSET(publisherListenSocket, &set)) {
-				publisherAcceptedSocket = *CreateAcceptSocket(publisherListenSocket);
-				//AddSocketToList(&listSockets, acceptedSocket);
-				DWORD print1ID;
-				HANDLE Thread;
-
-
-				printf("Pravljenje treda\n");
-
-				Thread = CreateThread(NULL, 0, &RcvMessage, &publisherAcceptedSocket, 0, &print1ID);
-				AddToList(&listThread, Thread);
-
-				//	break;
-			}
-		}
-		///
-	} while (1);
+	LitenForPublisher(publisherListenSocket); 
 
 	// shutdown the connection since we're done
-	iResult = shutdown(publisherAcceptedSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
-		closesocket(publisherAcceptedSocket);
-		WSACleanup();
-		//return 1;
-	}
+	
 
-	DeleteCriticalSection(&cs);
+	
+	DeleteOurCriticalSection();
 	///uradit
 	//oslobditi hendlove -> tredovi
 	// cleanup
 	closesocket(publisherListenSocket);
-	closesocket(publisherAcceptedSocket);
+	
 	WSACleanup();
 	getchar();
 

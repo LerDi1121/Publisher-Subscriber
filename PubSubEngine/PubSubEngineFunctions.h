@@ -75,5 +75,9 @@ DWORD WINAPI  AddMessageToQueue(LPVOID param);
 DWORD WINAPI ListenSubscriber(LPVOID param);
 void RemoveSubscriber(subscriber_t*  sub);
 void RemoveSubscriberFromList(int id, node_subscriber_t** list);
+void InitializeOurCriticalSection();
+void DeleteOurCriticalSection();
+void LitenForPublisher(SOCKET publisherListenSocket);
+
 
 #endif // HEADER_H
