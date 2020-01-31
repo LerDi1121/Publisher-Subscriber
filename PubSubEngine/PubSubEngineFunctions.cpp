@@ -107,10 +107,11 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		CreateQueue(&(sub->queue));
 		LeaveCriticalSection(&cs);
 		int * size = (int *)red;
-		char * messageForSend = (char *)malloc(*size + 4);
-		memcpy(messageForSend, size, 4);
-		memcpy(messageForSend+4, red+8, *size);
-		int sizeOfMsg = *size + 4;
+		char * messageForSend = (char *)malloc(*size + sizeof(int));
+		memcpy(messageForSend, size, sizeof(int));
+		memcpy(messageForSend+ sizeof(int), red+ sizeof(int)*2, *size);
+		int sizeOfMsg = *size + sizeof(int);
+		char* msgBegin = messageForSend;
 		bool flag = FALSE;
 		while (true) {
 			
@@ -131,12 +132,14 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		if (flag)
 			break;
 		printf("Slanje poruke na Suba ****\n ");
+		free(msgBegin);
 		Sleep(4000);
 	}
 	subscriber_t *temp = sub;
 	sub = NULL;
 	RemoveSubscriber(temp);
 	free(temp);
+	
 	
 	closesocket(acceptedSocket);
 	return -1;
@@ -404,52 +407,32 @@ char* Enqueue(char** queue, char* msg, int msg_size) {
 	
 
 	int* lenght = (int*)(*queue);
-	int* ukupno = (int*)((*queue) + 4);
-	int l = *lenght;
-	int u = *ukupno;
-	if (l + msg_size >  u)
+	int* max = (int*)((*queue) + 4);
+
+	if (* lenght + msg_size >  *max)
 	{
-	
-		lenght = (int*)(*queue);
-		 ukupno = (int*)((*queue) + 4);
-	
-		 // jednostavno se izgube vrednostu u lenght i ukupno 
-		//alociraj novu memoriju
-		/*char* newQueue = (char*)malloc(u * 2);
-		u *= 2;
-		memcpy(newQueue, (*queue), l + 8);
-		free((*queue));
-		(*queue) = newQueue;
-			memcpy( (*queue), &l,4);
-			memcpy( (*queue)+4, &u,4);*/
-		 char* newQueue = (char*)malloc((*ukupno) * 2);
-		 *ukupno *= 2;
+		 char* newQueue = (char*)malloc((*max) * 2);
+		 *max *= 2;
 		 memcpy(newQueue, (*queue), *lenght + 8);
 		 free((*queue));
 		 (*queue) = newQueue;
 
-
-
 		printf("\n nova memorija  ***********\n");
 
-		int* lenght = (int*)(*queue);
-		int* ukupno = (int*)((*queue) + 4);
-		char* message_for_queue = (char*)malloc(msg_size + 4);
-		memcpy(message_for_queue, &msg_size, 4);
-		memcpy(message_for_queue + 4, msg, msg_size);
-
-		memcpy((*queue) + (*lenght) + 8, message_for_queue, msg_size + 4);
-		*lenght += (msg_size + 4);
+		lenght = (int*)(*queue);
+		max = (int*)((*queue) + 4);
+		memcpy((*queue) + (*lenght) + sizeof(int) * 2, &msg_size, sizeof(int));
+		*lenght +=sizeof(int);
+		memcpy((*queue) + (*lenght) + sizeof(int) * 2, msg, msg_size);
+		*lenght += msg_size;
 		printf("%d\n", *lenght);
 	}
 	else
 	{
-		char* message_for_queue = (char*)malloc(msg_size + 4);
-		memcpy(message_for_queue, &msg_size, 4);
-		memcpy(message_for_queue + 4, msg, msg_size);
-
-		memcpy((*queue) + (*lenght) + 8, message_for_queue, msg_size + 4);
-		*lenght += (msg_size + 4);
+		memcpy((*queue) + (*lenght) + sizeof(int) * 2, &msg_size, sizeof(int));
+		*lenght += sizeof(int);
+		memcpy((*queue) + (*lenght) + sizeof(int) * 2, msg, msg_size);
+		*lenght += msg_size;
 		printf("%d\n", *lenght);
 	}
 
