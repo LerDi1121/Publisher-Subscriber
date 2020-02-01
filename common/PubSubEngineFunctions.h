@@ -14,7 +14,7 @@ void CreateQueue(char** msgQueue);
 
 SOCKET* CreatePublisherListenSocket();
 SOCKET* CreateSubscriberListenSocket();
-
+/////*******
 void WriteMessage(char* message);// za poseban tred koji ce upisivati u red
 DWORD WINAPI  AddMessageToQueue(LPVOID param);
 
