@@ -15,5 +15,19 @@
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 
+/*
+	Funkcija: InitializeWindowsSockets
+	----------------------------------
+	Funkcionalnost : Inicijalizuje WsaData podatke
+	Povratna vrednost : Uspesnost akcije
+*/
 bool InitializeWindowsSockets();
+/*
+	Funkcija: CloseSocket
+	----------------------------------
+	Funkcionalnost : Gasenje i zatvaranje uticnice
+	socket: Soket koji treba da se ugasi i zatvori
+	Povratna vrednost : Nema
+*/
+
 void CloseSocket(SOCKET* socket);

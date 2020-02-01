@@ -3,7 +3,6 @@
 bool InitializeWindowsSockets()
 {
 	WSADATA wsaData;
-	// Initialize windows sockets library for this process
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 	{
 		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
@@ -14,6 +13,6 @@ bool InitializeWindowsSockets()
 
 void CloseSocket(SOCKET* socket)
 {
-	int iResult = shutdown(* socket, SD_SEND);
+	shutdown(* socket, SD_SEND);
 	closesocket(*socket);
 }

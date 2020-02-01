@@ -6,6 +6,8 @@ node_t* listThread = NULL;
 node_subscriber_t* listAnalog = NULL;
 node_subscriber_t* listStatus = NULL;
 
+#define BUFF_SIZE 515
+
 
 void InitializeOurCriticalSection()
 {
@@ -14,6 +16,12 @@ void InitializeOurCriticalSection()
 void DeleteOurCriticalSection()
 {
 	DeleteCriticalSection(&cs);
+}
+
+void SetSocketInNonblockingMode(SOCKET *socket)
+{
+	unsigned long mode = 1;
+	ioctlsocket(*socket, FIONBIO, &mode);
 }
 
 void LitenForPublisher(SOCKET publisherListenSocket)
@@ -27,8 +35,7 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 		return;
 	}
 	SOCKET publisherAcceptedSocket = INVALID_SOCKET;
-
-	iResult = ioctlsocket(publisherAcceptedSocket, FIONBIO, (u_long*)1);
+	SetSocketInNonblockingMode(&publisherAcceptedSocket);
 
 	printf("Server initialized, waiting for clients.\n");
 	FD_SET set;
@@ -37,35 +44,46 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 	timeVal.tv_usec = 0;
 	do
 	{
-		// konektovanje
 		FD_ZERO(&set);
 		FD_SET(publisherListenSocket, &set);
 
 		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
-			//desila se greska prilikom poziva funkcije
+			
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(publisherListenSocket, &set)) {
 				publisherAcceptedSocket = *CreateAcceptSocket(publisherListenSocket);
-				//AddSocketToList(&listSockets, acceptedSocket);
-				DWORD print1ID;
-				HANDLE Thread;
+				SetSocketInNonblockingMode(&publisherAcceptedSocket);
+				FD_SET(publisherAcceptedSocket, &set);
+				iResult = select(0 , &set, NULL, NULL, &timeVal);
 
+				 if (iResult != 0) {
+					if (FD_ISSET(publisherAcceptedSocket, &set)) {
+						char someBuff[BUFF_SIZE];
+						int iResult = recv(publisherAcceptedSocket, someBuff, BUFF_SIZE, 0);
+						if (iResult > 0)
+						{
+							int* size = (int*)someBuff;
+							char * msg =someBuff + (sizeof(int));
+							msg[*size] = '\0';
+							printf("%s \n", msg);
 
-				printf("Pravljenje treda\n");
+							DWORD print1ID;
+							HANDLE Thread;
+							printf("Pravljenje treda za novog Publishera\n");
 
-				Thread = CreateThread(NULL, 0, &RcvMessage, &publisherAcceptedSocket, 0, &print1ID);
-				AddToList(&listThread, Thread);
-
-				//	break;
+							Thread = CreateThread(NULL, 0, &RcvMessage, &publisherAcceptedSocket, 0, &print1ID);
+							AddToList(&listThread, Thread);
+						}
+					}
+				
+				 }
 			}
 		}
-		///
 	} while (1);
 	CloseSocket(&publisherAcceptedSocket);
-
-
+	
 }
 ///primanje poruke suba i slanje na njega
 DWORD WINAPI RcvMessageFromSub(LPVOID param)
@@ -194,7 +212,6 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	return -1;
 }
 
-///slusanje za subove
 DWORD WINAPI ListenSubscriber(LPVOID param)
 {
 	SOCKET subscriberListenSocket = *((SOCKET*)param);
@@ -206,9 +223,8 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		WSACleanup();
 		return 1;
 	}
-	unsigned long int temp = 1;
-	iResult = ioctlsocket(subscriberListenSocket, FIONBIO, &temp);
-
+	SetSocketInNonblockingMode(&subscriberListenSocket);
+	
 	printf("Server initialized, waiting for SUBSCRIBER.\n");
 	FD_SET setSub;
 	timeval timeVal;
@@ -389,8 +405,7 @@ SOCKET* CreateAcceptSocket(SOCKET  listenSocket)
 		WSACleanup();
 	}
 
-	unsigned long int nonBlockingMode = 1;
-	int iResult = ioctlsocket(*acceptedSocket, FIONBIO, &nonBlockingMode);
+	SetSocketInNonblockingMode(acceptedSocket);
 	return acceptedSocket;
 }
 
@@ -537,9 +552,7 @@ SOCKET* CreatePublisherListenSocket()
 		WSACleanup();
 		return invalidSocket;
 	}
-
-	unsigned long int nonBlockingMode = 1;
-	iResult = ioctlsocket(*listenSocketRetVal, FIONBIO, &nonBlockingMode);// ******omoguciti  ne blokirajuci rezim
+	SetSocketInNonblockingMode(listenSocketRetVal);
 	freeaddrinfo(resultingAddress);
 	return listenSocketRetVal;
 }
@@ -585,9 +598,7 @@ SOCKET* CreateSubscriberListenSocket()
 		return invalidSocket;
 	}
 	freeaddrinfo(resultingAddress);
-	unsigned long int nonBlockingMode = 1;
-	iResult = ioctlsocket(*listenSocketRetVal, FIONBIO, &nonBlockingMode);// ******omoguciti  ne blokirajuci rezim
-
+	SetSocketInNonblockingMode(listenSocketRetVal);
 	return listenSocketRetVal;
 }
 void RemoveSubscriberFromList(int id, node_subscriber_t** list)
