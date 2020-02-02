@@ -40,8 +40,8 @@ int  main(int argc, char** argv)
 		closesocket(connectSocket);
 		WSACleanup();
 	}
-
-	if (SubscriberConnect(connectSocket)) {
+	const char* initialMessage = "New subscriber connection.";
+	if (Connect(connectSocket, initialMessage)) {
 		Sleep(1000);
 		Subscribe(connectSocket);
 	}

@@ -14,30 +14,10 @@ bool InitializeWindowsSockets()
 
 void CloseSocket(SOCKET* socket)
 {
-	printf("\n\nConnection failure.\n");
-	Sleep(500);
 	printf("Shutting down socket...\n\n");
-	shutdown(*socket, SD_SEND);
+	shutdown(*socket, SD_BOTH);
 	closesocket(*socket);
-	Sleep(1500);
-}
-
-bool SubscriberConnect(SOCKET subscribeSocket)
-{
-	int initMessage = 1;
-	int iResult = send(subscribeSocket, (char*)(&initMessage), 4, 0);
-
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(subscribeSocket);
-		return false;
-	}
-	else {
-		printf("Connection was successful.\n");
-	}
-	printf("*********************************************************\n\n");
-	return true;
+	Sleep(500);
 }
 
 bool Subscribe(SOCKET subscribeSocket)
@@ -97,7 +77,7 @@ bool Publish(void* topic, void* type, const char* message, SOCKET publishSocket)
 	return true;
 }
 
-bool PublisherConnect(SOCKET connectSocket, const char* initialMessage)
+bool Connect(SOCKET connectSocket, const char* initialMessage)
 {
 	int initialMessageSize = strlen(initialMessage);
 	char* dataToSend = (char*)malloc(initialMessageSize + 4);
@@ -115,4 +95,13 @@ bool PublisherConnect(SOCKET connectSocket, const char* initialMessage)
 	}
 	printf("*********************************************************\n\n");
 	return true;
+}
+
+bool CloseApp()
+{
+	printf("Are you sure you want exit? Y/N ");
+	char temp = getchar();
+	if (temp == 'Y' || temp == 'y')
+		return true;
+	return false;
 }

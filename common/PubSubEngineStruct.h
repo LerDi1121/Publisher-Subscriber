@@ -21,12 +21,12 @@ typedef struct node_subscriber {
 }node_subscriber_t;
 
 typedef struct node {
-	HANDLE value;
+	HANDLE* value;
 	struct node* next;
 } node_t;
 
 typedef struct node_t_socket {
-	SOCKET value;
+	SOCKET* value;
 	struct node_t_socket* next;
 } node_t_socket;
 
@@ -37,6 +37,7 @@ typedef struct data_for_thread {
 	//CRITICAL_SECTION * cs;
 }data_for_thread;
 
+extern node_t_socket* listSockets;
 extern CRITICAL_SECTION cs;
 extern char* msg_queue;
 extern node_t* listThread;

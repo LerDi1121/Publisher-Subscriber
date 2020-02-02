@@ -2,7 +2,6 @@
 
 int  main(int argc, char** argv)
 {
-	node_t_socket* listSockets = NULL;
 	int iResult;
 
 	SOCKET publisherListenSocket = INVALID_SOCKET;
@@ -18,16 +17,24 @@ int  main(int argc, char** argv)
 	publisherListenSocket = *CreatePublisherListenSocket();
 	subscriberListenSocket = *CreateSubscriberListenSocket();
 
+	AddSocketToList(&listSockets, &publisherListenSocket);
+	AddSocketToList(&listSockets, &subscriberListenSocket);
 	DWORD printSubID;
 	HANDLE ThreadSub;
 	ThreadSub = CreateThread(NULL, 0, &ListenSubscriber, &subscriberListenSocket, 0, &printSubID);
-	AddToList(&listThread, ThreadSub);
-
 	LitenForPublisher(publisherListenSocket);
 
-	DeleteOurCriticalSection();
-	closesocket(publisherListenSocket);
+	//printf("tred za slusanje suba dodat u listu");
+
+	//AddToList(&listThread, &ThreadSub);
+	CloseAllHandles();
+	Sleep(1500);
+	CloseHandle(ThreadSub);
+	CloseAllSockets();
+
 	WSACleanup();
+
+	DeleteOurCriticalSection();
 
 	return 0;
 }

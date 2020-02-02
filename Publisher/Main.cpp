@@ -47,7 +47,7 @@ int __cdecl main(int argc, char** argv)
 		WSACleanup();
 	}
 
-	if (PublisherConnect(connectSocket, initialMessage))
+	if (Connect(connectSocket, initialMessage))
 		while (true) {
 			if (!Publish((void*)topic, (void*)type, messageToSend, connectSocket))
 				break;

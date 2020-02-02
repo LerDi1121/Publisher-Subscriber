@@ -32,14 +32,6 @@ bool InitializeWindowsSockets();
 void CloseSocket(SOCKET* socket);
 
 /*
-	Funkcija: SubscriberConnect
-	----------------------------------
-	Funkcionalnost: Uspostavlja konekciju sa PubSub Engine-om i salje inicijalnu poruku.
-	Povratna vrednost: Uspesnost izvrsavanja funkcije.
-*/
-bool SubscriberConnect(SOCKET subscribeSocket);
-
-/*
 	Funkcija: Subscribe
 	----------------------------------
 	Funkcionalnost: Izvrsava subskripciju na odabranu temu.
@@ -53,7 +45,7 @@ bool Subscribe(SOCKET subscribeSocket);
 	Funkcionalnost: Uspostavlja konekciju sa PubSub Engine-om i salje inicijalnu poruku.
 	Povratna vrednost: Uspesnost izvrsavanja funkcije.
 */
-bool PublisherConnect(SOCKET connectSocket, const char* initialMessage);
+bool Connect(SOCKET connectSocket, const char* initialMessage);
 
 /*
 	Funkcija: Publish
@@ -62,3 +54,7 @@ bool PublisherConnect(SOCKET connectSocket, const char* initialMessage);
 	Povratna vrednost: Uspesnost izvrsavanja funkcije.
 */
 bool Publish(void* topic, void* type, const char* message, SOCKET conSoc);
+/*
+
+*/
+bool CloseApp();
