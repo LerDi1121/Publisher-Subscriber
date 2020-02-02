@@ -49,7 +49,6 @@ bool Connect(SOCKET publishSocket)
 	if (iResult == SOCKET_ERROR)
 	{
 		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(publishSocket);
 		return false;
 	}
 	return true;

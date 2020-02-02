@@ -5,6 +5,7 @@ int  main(int argc, char** argv)
 {
 	SOCKET connectSocket = INVALID_SOCKET;
 	int iResult;
+	char messageBufer[DEFAULT_BUFLEN];
 
 	if (argc != 2)
 	{
@@ -50,7 +51,6 @@ int  main(int argc, char** argv)
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
 	FD_ZERO(&set);
-	char messageBufer[DEFAULT_BUFLEN];
 
 	while (true)
 	{
@@ -59,7 +59,7 @@ int  main(int argc, char** argv)
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
 			printf("SOCKET_ERROR");
-			continue;
+			break;
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(connectSocket, &set)) {
@@ -96,7 +96,7 @@ int  main(int argc, char** argv)
 		}
 	}
 
-	closesocket(connectSocket);
+	CloseSocket(&connectSocket);
 	WSACleanup();
 
 	return 0;

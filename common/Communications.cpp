@@ -13,6 +13,10 @@ bool InitializeWindowsSockets()
 
 void CloseSocket(SOCKET* socket)
 {
-	shutdown(* socket, SD_SEND);
+	printf("\n\nConnection failure.\n");
+	Sleep(500);
+	printf("Shutting down socket...\n\n");
+	shutdown(*socket, SD_SEND);
 	closesocket(*socket);
+	Sleep(1000);
 }

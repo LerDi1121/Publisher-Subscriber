@@ -1,11 +1,13 @@
 #pragma once
 #define HEADER_H
 #include "PubSubEngineStruct.h"
+#include <conio.h>
+
 /*
 	Funkcija: CreateSubscriber
 	----------------------------
 	Funkcionalnost:
-	Povratna vrednost: 
+	Povratna vrednost:
 
 */
 subscriber_t* CreateSubscriber(SOCKET socket, int topic);
@@ -108,21 +110,21 @@ void RemoveSubscriberFromList(int id, node_subscriber_t** list);
 	Funkcija: InitializeOurCriticalSection
 	------------------------------
 	Funkcionalnost: Inicijalizuje kriticnu sekciju
-	Povratna vrednost: Nema 
+	Povratna vrednost: Nema
 */
 void InitializeOurCriticalSection();
 /*
 	Funkcija: DeleteOurCriticalSection
 	------------------------------
 	Funkcionalnost: Brise kriticnu sekciju
-	Povratna vrednost: Nema 
+	Povratna vrednost: Nema
 */
 void DeleteOurCriticalSection();
 /*
 	Funkcija: LitenForPublisher
 	------------------------------
 	Funkcionalnost: Osluskuje da li se neki publisher konektovao i pravi poseban tred za njega u kojem se primaju poruke
-	publisherListenSocket: Soket koji sluzi za slusanje 
+	publisherListenSocket: Soket koji sluzi za slusanje
 	Povratna vrednost: Nema
 */
 void LitenForPublisher(SOCKET publisherListenSocket);
@@ -134,5 +136,4 @@ void LitenForPublisher(SOCKET publisherListenSocket);
 	Povratna vrednost: Nema
 */
 
-void SetSocketInNonblockingMode(SOCKET  *socket);
-
+void SetSocketInNonblockingMode(SOCKET* socket);

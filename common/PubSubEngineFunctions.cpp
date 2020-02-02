@@ -8,7 +8,6 @@ node_subscriber_t* listStatus = NULL;
 
 #define BUFF_SIZE 515
 
-
 void InitializeOurCriticalSection()
 {
 	InitializeCriticalSection(&cs);
@@ -18,7 +17,7 @@ void DeleteOurCriticalSection()
 	DeleteCriticalSection(&cs);
 }
 
-void SetSocketInNonblockingMode(SOCKET *socket)
+void SetSocketInNonblockingMode(SOCKET* socket)
 {
 	unsigned long mode = 1;
 	ioctlsocket(*socket, FIONBIO, &mode);
@@ -49,23 +48,22 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 
 		iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
-			
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(publisherListenSocket, &set)) {
 				publisherAcceptedSocket = *CreateAcceptSocket(publisherListenSocket);
 				SetSocketInNonblockingMode(&publisherAcceptedSocket);
 				FD_SET(publisherAcceptedSocket, &set);
-				iResult = select(0 , &set, NULL, NULL, &timeVal);
+				iResult = select(0, &set, NULL, NULL, &timeVal);
 
-				 if (iResult != 0) {
+				if (iResult != 0) {
 					if (FD_ISSET(publisherAcceptedSocket, &set)) {
 						char someBuff[BUFF_SIZE];
 						int iResult = recv(publisherAcceptedSocket, someBuff, BUFF_SIZE, 0);
 						if (iResult > 0)
 						{
 							int* size = (int*)someBuff;
-							char * msg =someBuff + (sizeof(int));
+							char* msg = someBuff + (sizeof(int));
 							msg[*size] = '\0';
 							printf("%s \n", msg);
 
@@ -77,13 +75,16 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 							AddToList(&listThread, Thread);
 						}
 					}
-				
-				 }
+				}
 			}
 		}
+
+		if (_kbhit())
+			return;
+
+		Sleep(100);
 	} while (1);
 	CloseSocket(&publisherAcceptedSocket);
-	
 }
 ///primanje poruke suba i slanje na njega
 DWORD WINAPI RcvMessageFromSub(LPVOID param)
@@ -181,7 +182,6 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		char* msgBegin = messageForSend;
 		bool flag = FALSE;
 		while (true) {
-
 			int iResult = send(acceptedSocket, messageForSend, sizeOfMsg, 0);
 			if (iResult == SOCKET_ERROR)
 			{
@@ -224,7 +224,7 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		return 1;
 	}
 	SetSocketInNonblockingMode(&subscriberListenSocket);
-	
+
 	printf("Server initialized, waiting for SUBSCRIBER.\n");
 	FD_SET setSub;
 	timeval timeVal;
@@ -237,7 +237,6 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 		FD_SET(subscriberListenSocket, &setSub);
 		iResult = select(0 /* ignored */, &setSub, NULL, NULL, &timeVal);
 		if (iResult == SOCKET_ERROR) {
-
 			CloseSocket(&subscriberListenSocket);
 			return INVALID_SOCKET;
 		}
@@ -302,7 +301,7 @@ void  WriteMessage(char* message)
 		forAnalog2->size = *messageLength;
 		ThreadAnalog = CreateThread(NULL, 0, &AddMessageToQueue, forAnalog2, 0, &printAnalog);
 		AddToList(&listThread, ThreadAnalog);
-		//status 
+		//status
 		DWORD printStatus;
 		HANDLE ThreadStatus;
 		data_for_thread* forStatus2 = (data_for_thread*)malloc(sizeof(data_for_thread));
@@ -320,7 +319,6 @@ void  WriteMessage(char* message)
 DWORD WINAPI RcvMessage(LPVOID param)
 {
 	SOCKET acceptedSocket = *((SOCKET*)param);
-
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
@@ -336,7 +334,6 @@ DWORD WINAPI RcvMessage(LPVOID param)
 		if (iResult == SOCKET_ERROR) {
 			CloseSocket(&acceptedSocket);
 			return -1;
-
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(acceptedSocket, &set)) {
@@ -355,7 +352,6 @@ DWORD WINAPI RcvMessage(LPVOID param)
 						memcpy(messageForQueue, velicinaPor, 4);
 						memcpy(messageForQueue + 4, Poruka, *velicinaPor);
 						WriteMessage(messageForQueue);
-
 					}
 					else if (iResult == 0)
 					{
@@ -401,7 +397,7 @@ SOCKET* CreateAcceptSocket(SOCKET  listenSocket)
 	{
 		printf("accept failed with error: %d\n", WSAGetLastError());
 		CloseSocket(&listenSocket);
-		
+
 		WSACleanup();
 	}
 
@@ -474,8 +470,6 @@ void CreateQueue(char** msgQueue)
 	memcpy(*msgQueue + 4, &max, 4);
 }
 char* Enqueue(char** queue, char* msg, int msg_size) {
-
-
 	int* lenght = (int*)(*queue);
 	int* max = (int*)((*queue) + 4);
 
@@ -547,7 +541,7 @@ SOCKET* CreatePublisherListenSocket()
 	{
 		printf("bind failed with error: %d\n", WSAGetLastError());
 		freeaddrinfo(resultingAddress);
-	
+
 		CloseSocket(listenSocketRetVal);
 		WSACleanup();
 		return invalidSocket;
@@ -617,15 +611,11 @@ void RemoveSubscriberFromList(int id, node_subscriber_t** list)
 			LeaveCriticalSection(&cs);
 			return;
 		}
-
-
 	}
 	while (current->next != NULL && tempSub->id != id) {
-
 		previous = current;
 		current = current->next;
 		tempSub = *(current->subscriber);
-
 	}
 	if (current == NULL) return;
 

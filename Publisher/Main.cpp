@@ -44,16 +44,17 @@ int __cdecl main(int argc, char** argv)
 		closesocket(connectSocket);
 		WSACleanup();
 	}
-	if(Connect(connectSocket))
-		while (1) {
-			Publish((void*)topic, (void*)type, messageToSend, connectSocket);
+
+	if (Connect(connectSocket))
+		while (true) {
+			if (!Publish((void*)topic, (void*)type, messageToSend, connectSocket))
+				break;
 			Sleep(2500);
 		}
 
-	printf("Connect error.");
+	// CloseSocket(&connectSocket);
 	closesocket(connectSocket);
 	WSACleanup();
-	getchar();
 
 	return 0;
 }
