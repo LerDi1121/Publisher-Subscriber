@@ -19,5 +19,20 @@
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
 
+/*
+	Funkcija: PrintMessages
+	----------------------------
+	Funkcionalnost: Parsira i ispisuje dobijenu poruku.
+	Povratna vrednost: Nema.
+
+*/
 void PrintMessages(char* msg, int totalSize);
+
+/*
+	Funkcija: SubscriptionChoice
+	----------------------------
+	Funkcionalnost: Omogucuje izbor topic-a na koji korisnik zeli da uradi subscribe.
+	Povratna vrednost: Odabrani topic.
+
+*/
 int SubscriptionChoice();

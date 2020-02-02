@@ -17,8 +17,38 @@
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT 27016
 
+/*
+	Funkcija: ChoseAtRandom
+	----------------------------
+	Funkcionalnost: Nasumicno generise broj 0 ili 1.
+	Povratna vrednost: Generisan broj.
+
+*/
 int ChoseAtRandom();
+
+/*
+	Funkcija: GenerateRandomTopic
+	----------------------------
+	Funkcionalnost: Na osnovu ChoseAtRandom funkcije, nasumicno se bira topic.
+	Povratna vrednost: Odabrani topic.
+
+*/
 enum Topic GenerateRandomTopic();
+
+/*
+	Funkcija: GenerateRandomType
+	----------------------------
+	Funkcionalnost: Na osnovu ChoseAtRandom funkcije, nasumicno se bira type ako se radi o Status topic-u.
+	Povratna vrednost: Odabrani type.
+
+*/
 enum TypeTopic GenerateRandomType(enum Topic topic);
+
+/*
+	Funkcija: PrintPublisherInfo
+	----------------------------
+	Funkcionalnost: Ispisuje informacije o publisher-u.
+	Povratna vrednost: Nema.
+
+*/
 void PrintPublisherInfo(enum Topic topic, enum TypeTopic type);
-#pragma once
