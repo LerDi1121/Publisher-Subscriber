@@ -18,9 +18,9 @@
 #define DEFAULT_PORT 27016
 
 int ChoseAtRandom();
-bool InitializeWindowsSockets();
-bool Connect(SOCKET conSoc);
+bool PubConnect(SOCKET conSoc);
 bool Publish(void* topic, void* type, const char* message, SOCKET conSoc);
 enum Topic GenerateRandomTopic();
 enum TypeTopic GenerateRandomType(enum Topic topic);
 void PrintPublisherInfo(enum Topic topic, enum TypeTopic type);
+#pragma once

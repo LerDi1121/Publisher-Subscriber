@@ -126,12 +126,14 @@
   <ItemGroup>
     <ClInclude Include="AllEnums.h" />
     <ClInclude Include="Communication.h" />
+    <ClInclude Include="PublisherFunctions.h" />
     <ClInclude Include="PubSubEngineFunctions.h" />
     <ClInclude Include="PubSubEngineStruct.h" />
     <ClInclude Include="SubscriberFunctions.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Communications.cpp" />
+    <ClCompile Include="PublisherFunctions.cpp" />
     <ClCompile Include="PubSubEngineFunctions.cpp" />
     <ClCompile Include="SucscriberFunctions.cpp" />
   </ItemGroup>

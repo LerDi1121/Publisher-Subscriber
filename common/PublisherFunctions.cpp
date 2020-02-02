@@ -1,15 +1,5 @@
 #include "PublisherFunctions.h"
 
-bool InitializeWindowsSockets()
-{
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-	{
-		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
-		return false;
-	}
-	return true;
-}
 bool Publish(void* topic, void* type, const char* message, SOCKET publishSocket)
 {
 	int topicSize = sizeof(Topic);
@@ -37,7 +27,7 @@ bool Publish(void* topic, void* type, const char* message, SOCKET publishSocket)
 	return true;
 }
 
-bool Connect(SOCKET publishSocket)
+bool PubConnect(SOCKET publishSocket)
 {
 	const char* initialMessageToSend = "New publisher has connected.";
 	int initialMessageSize = strlen(initialMessageToSend);

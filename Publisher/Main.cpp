@@ -1,4 +1,5 @@
-#include "PublisherFunctions.h"
+#include "..\common\PublisherFunctions.h"
+#include "..\common\Communication.h"
 
 int __cdecl main(int argc, char** argv)
 {
@@ -45,7 +46,7 @@ int __cdecl main(int argc, char** argv)
 		WSACleanup();
 	}
 
-	if (Connect(connectSocket))
+	if (PubConnect(connectSocket))
 		while (true) {
 			if (!Publish((void*)topic, (void*)type, messageToSend, connectSocket))
 				break;
