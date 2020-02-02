@@ -1,53 +1,5 @@
 #include "SubscriberFunctions.h"
 
-bool Connect(SOCKET subscribeSocket)
-{
-	int initMessage = 1;
-	int iResult = send(subscribeSocket, (char*)(&initMessage), 4, 0);
-
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(subscribeSocket);
-		return false;
-	}
-	else {
-		printf("Connection was successful.\n");
-	}
-	printf("*********************************************************\n\n");
-	return true;
-}
-bool Subscribe(SOCKET subscribeSocket)
-{
-	int subChoice = SubscriptionChoice();
-	int iResult = send(subscribeSocket, (char*)(&subChoice), 4, 0);
-
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("subscribe failed with error: %d\n", WSAGetLastError());
-		closesocket(subscribeSocket);
-		return false;
-	}
-	else
-	{
-		switch (subChoice) {
-		case 0:
-			printf("User has subscribed to Analog topic successfully.\n");
-			break;
-		case 1:
-			printf("User has subscribed to Status topic successfully.\n");
-			break;
-		case 2:
-			printf("User has subscribed to both topics successfully.\n");
-			break;
-		default:
-			break;
-		}
-	}
-	printf("*********************************************************\n\n");
-	return true;
-}
-
 int SubscriptionChoice() {
 	int i = 0;
 	printf("1. Subscribe to Analog topic\n");

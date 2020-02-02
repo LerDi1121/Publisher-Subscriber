@@ -41,7 +41,7 @@ int  main(int argc, char** argv)
 		WSACleanup();
 	}
 
-	if (Connect(connectSocket)) {
+	if (SubscriberConnect(connectSocket)) {
 		Sleep(1000);
 		Subscribe(connectSocket);
 	}

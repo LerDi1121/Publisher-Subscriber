@@ -20,7 +20,4 @@
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
 
 void PrintMessages(char* msg, int totalSize);
-
-bool Connect(SOCKET subscribeSocket);
-bool Subscribe(SOCKET subscribeSocket);
-int SubscriptionChoice(); 
+int SubscriptionChoice();
