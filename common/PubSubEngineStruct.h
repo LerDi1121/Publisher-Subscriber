@@ -23,7 +23,7 @@ typedef struct node_subscriber {
 typedef struct node {
 	HANDLE* value;
 	int ID;
-	bool Actie;
+	int Actie;
 	struct node* next;
 } node_t;
 

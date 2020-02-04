@@ -8,7 +8,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <conio.h>
-#include "..\common\AllEnums.h"
+#include "AllEnums.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")

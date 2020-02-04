@@ -36,13 +36,7 @@ void AddSocketToList(node_t_socket** head, SOCKET* value);
 */
 void CloseAllSockets();
 
-/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
-void CloseAllHandles();
+
 
 /*
 	Funkcija:

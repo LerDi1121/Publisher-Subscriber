@@ -178,7 +178,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 {
 	SOCKET acceptedSocket = *((SOCKET*)param);
 	int ThreadID;
-	subscriber_t* sub;
+	subscriber_t* sub = NULL;
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
@@ -397,11 +397,12 @@ DWORD WINAPI RcvMessage(LPVOID param)
 	SOCKET acceptedSocket = *((SOCKET*)param);
 	int ThreadID;
 	FD_SET set;
+	FD_ZERO(&set);
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
 	bool flag = false
-	FD_ZERO(&set);
+	
 
 	while (true)
 	{
