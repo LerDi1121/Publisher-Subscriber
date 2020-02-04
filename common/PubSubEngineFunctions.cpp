@@ -2,12 +2,12 @@
 int SubCount = 0;
 CRITICAL_SECTION cs;
 char* msg_queue;
-node_t* listThread = NULL;
+node_t* listThreadSubs = NULL;
+node_t* listThreadPubs = NULL;
 node_subscriber_t* listAnalog = NULL;
 node_subscriber_t* listStatus = NULL;
 node_t_socket* listSockets = NULL;
-HANDLE ThreadAnalog;
-HANDLE ThreadStatus;
+
 
 #define BUFF_SIZE 515
 
@@ -40,6 +40,7 @@ void AddSocketToList(node_t_socket** head, SOCKET* value)
 		current->next = NULL;
 	}
 }
+/*
 void CloseAllHandles()
 {
 	node_t* current = listThread;
@@ -57,7 +58,7 @@ void CloseAllHandles()
 		}
 	}
 }
-
+*/
 void CloseAllSockets()
 {
 	node_t_socket* current = listSockets;
@@ -164,24 +165,26 @@ void ConnectPublisher(SOCKET socket)
 		msg[*size] = '\0';
 		printf("%s\n", msg);
 
-		DWORD print1ID;
+		DWORD ID;
 		HANDLE Thread;
 		printf("Pravljenje treda za novog Publishera\n");
 
-		Thread = CreateThread(NULL, 0, &RcvMessage, &socket, 0, &print1ID);
-		AddToList(&listThread, &Thread);
+		Thread = CreateThread(NULL, 0, &RcvMessage, &socket, 0, &ID);
+		AddToList(&listThreadPubs, &Thread, ID);
 	}
 }
 ///primanje poruke suba i slanje na njega
 DWORD WINAPI RcvMessageFromSub(LPVOID param)
 {
 	SOCKET acceptedSocket = *((SOCKET*)param);
+	int ThreadID;
 	subscriber_t* sub;
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
 	FD_ZERO(&set);
+	bool flag = false;
 	while (true)
 	{
 		FD_SET(acceptedSocket, &set);
@@ -196,21 +199,16 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				{
 					break;//connect
 				}
-				else if (iResult == 0)
+				else 
 				{
 					printf("Connection with client closed.\n");
-					CloseSocket(&acceptedSocket);
-				}
-				else
-				{
-					printf("recv failed with error: %d\n", WSAGetLastError());
-					CloseSocket(&acceptedSocket);
+					flag = true;
 				}
 			}
 		}
 		Sleep(500);
 	}
-	while (true)//subscribe
+	while (!flag)//subscribe
 	{
 		FD_SET(acceptedSocket, &set);
 
@@ -233,18 +231,13 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				else if (iResult == 0)
 				{
 					printf("Connection with client closed.\n");
-					CloseSocket(&acceptedSocket);
-				}
-				else
-				{
-					printf("recv failed with error: %d\n", WSAGetLastError());
-					CloseSocket(&acceptedSocket);
+					flag = true;
 				}
 			}
 		}
 		Sleep(500);
 	}
-	while (true)
+	while (!flag)
 	{
 		Sleep(5000);
 		EnterCriticalSection(&cs);
@@ -264,14 +257,13 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		memcpy(messageForSend + sizeof(int), red + sizeof(int) * 2, *size);
 		int sizeOfMsg = *size + sizeof(int);
 		char* msgBegin = messageForSend;
-		bool flag = FALSE;
-		while (true) {
+		bool TempFlag = FALSE;
+		while (!flag) {
 			int iResult = send(acceptedSocket, messageForSend, sizeOfMsg, 0);
 			if (iResult == SOCKET_ERROR)
 			{
-				printf("send failed with error: %d\n", WSAGetLastError());
 				printf("Unsubscribe");
-				flag = TRUE;
+				flag = true;
 				break;
 			}
 			sizeOfMsg -= iResult;
@@ -280,16 +272,17 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				break;
 		}
 		free(red);
-
+		free(msgBegin);
 		if (flag)
 			break;
-		printf("Slanje poruke na Suba ****\n ");
-		free(msgBegin);
+		printf("Send message to subscriber\n ");
+		
 		Sleep(4000);
 	}
 	CloseSocket(&acceptedSocket);
 	RemoveSubscriber(sub);
 	free(sub);
+	//DeactivateThread(&listThreadSubs, ThreadID);
 
 	return -1;
 }
@@ -328,12 +321,12 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 			if (FD_ISSET(subscriberListenSocket, &setSub)) {
 				subscriberAcceptedSocket = *CreateAcceptSocket(subscriberListenSocket);
 
-				DWORD print1ID;
+				DWORD ID;
 				HANDLE Thread;
 				printf("Pravljenje treda Za suba\n");
 
-				Thread = CreateThread(NULL, 0, &RcvMessageFromSub, &subscriberAcceptedSocket, 0, &print1ID);
-				AddToList(&listThread, &Thread);
+				Thread = CreateThread(NULL, 0, &RcvMessageFromSub, &subscriberAcceptedSocket, 0, &ID);
+				AddToList(&listThreadSubs, & Thread, ID);
 			}
 		}
 		Sleep(1000);
@@ -402,12 +395,14 @@ void  WriteMessage(char* message)
 DWORD WINAPI RcvMessage(LPVOID param)
 {
 	SOCKET acceptedSocket = *((SOCKET*)param);
+	int ThreadID;
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
-
+	bool flag = false
 	FD_ZERO(&set);
+
 	while (true)
 	{
 		FD_SET(acceptedSocket, &set);
@@ -436,38 +431,24 @@ DWORD WINAPI RcvMessage(LPVOID param)
 						memcpy(messageForQueue + 4, Poruka, *velicinaPor);
 						WriteMessage(messageForQueue);
 					}
-					else if (iResult == 0)
-					{
-						printf("Connection with client closed.\n");
-						printf("The publisher is disconnected ");
-						CloseSocket(&acceptedSocket);
-						return false;
-					}
 					else
 					{
-						printf(" recv failed with error: %d\n", WSAGetLastError());
 						printf("The publisher is disconnected ");
-						CloseSocket(&acceptedSocket);
-						return false;
+						flag = true;
 					}
-				}
-				else if (iResult == 0)
-				{
-					printf("Connection with client closed.\n");
-					printf("The publisher is disconnected ");
-					CloseSocket(&acceptedSocket);
-					return false;
 				}
 				else
 				{
-					printf(" recv failed with error: %d\n", WSAGetLastError());
 					printf("The publisher is disconnected ");
-					CloseSocket(&acceptedSocket);
-					return false;
+					flag = true;
 				}
 			}
 		}
+		if (flag)
+			break;
 	}
+//	DeactivateThread(id);
+	CloseSocket(&acceptedSocket);
 	//return true;
 }
 
@@ -522,13 +503,17 @@ void AddToConcreteList(node_subscriber_t** list, subscriber_t** sub) {
 		current->next = NULL;
 	}
 }
-void AddToList(node_t** head, HANDLE* value)
+
+//////**********
+void AddToList(node_t** head, HANDLE* value, int id)
 {
 	if ((*head) == NULL)
 	{
 		(*head) = (node_t*)malloc(sizeof(node_t));
 		(*head)->value = value;
 		(*head)->next = NULL;
+		(*head)->ID = id;
+		(*head)->Actie = true;
 	}
 	else
 	{
@@ -541,8 +526,28 @@ void AddToList(node_t** head, HANDLE* value)
 		current = current->next;
 		current->value = value;
 		current->next = NULL;
+		(*head)->ID = id;
+		(*head)->Actie = true;
 	}
 }
+
+
+void DeactivateThread(node_t** head,int id)
+{
+	node_t* current = (*head);
+	while (current->next != NULL) {
+		if (current->ID == id)
+		{
+			current->Actie = false;
+			return;
+
+		}
+
+		current = current->next;
+	}
+}
+
+
 void CreateQueue(char** msgQueue)
 {
 	*msgQueue = NULL;

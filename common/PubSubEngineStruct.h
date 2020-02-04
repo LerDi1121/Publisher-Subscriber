@@ -22,6 +22,8 @@ typedef struct node_subscriber {
 
 typedef struct node {
 	HANDLE* value;
+	int ID;
+	bool Actie;
 	struct node* next;
 } node_t;
 
@@ -34,12 +36,12 @@ typedef struct data_for_thread {
 	int size;
 	char* message;
 	node_subscriber_t** list;
-	//CRITICAL_SECTION * cs;
 }data_for_thread;
 
 extern node_t_socket* listSockets;
 extern CRITICAL_SECTION cs;
 extern char* msg_queue;
-extern node_t* listThread;
+extern node_t* listThreadSubs;
+extern node_t* listThreadPubs;
 extern node_subscriber_t* listAnalog;
 extern node_subscriber_t* listStatus;

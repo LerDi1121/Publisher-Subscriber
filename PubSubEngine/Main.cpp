@@ -23,11 +23,7 @@ int  main(int argc, char** argv)
 	HANDLE ThreadSub;
 	ThreadSub = CreateThread(NULL, 0, &ListenSubscriber, &subscriberListenSocket, 0, &printSubID);
 	LitenForPublisher(publisherListenSocket);
-
-	//printf("tred za slusanje suba dodat u listu");
-
-	//AddToList(&listThread, &ThreadSub);
-	CloseAllHandles();
+	//CloseAllHandles();
 	Sleep(1500);
 	CloseHandle(ThreadSub);
 	CloseAllSockets();

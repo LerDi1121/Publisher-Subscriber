@@ -19,7 +19,7 @@ DWORD WINAPI RcvMessage(LPVOID param);
 	Funkcionalnost:
 	Povratna vrednost: Nema
 */
-void AddToList(node_t** head, HANDLE* value);
+void AddToList(node_t** head, HANDLE* value, int id);
 
 /*
 	Funkcija:
@@ -175,3 +175,5 @@ void ConnectPublisher(SOCKET socket);/*
 	Povratna vrednost: Nema
 */
 int ConnectSubscriber(SOCKET socket);
+
+void DeactivateThread(node_t **head, int id);
