@@ -20,19 +20,20 @@
 #define DEFAULT_PORT_FOR_PUB_SUB_ENG_SEND 27017
 
 /*
-	Funkcija: PrintMessages
-	----------------------------
-	Funkcionalnost: Parsira i ispisuje dobijenu poruku.
-	Povratna vrednost: Nema.
-
-*/
+ *	Function: PrintMessages
+ * --------------------
+ *	Parses and prints received message to the console.
+ *
+ *	msg: received data
+ *	totalSize: size of received data
+ */
 void PrintMessages(char* msg, int totalSize);
 
 /*
-	Funkcija: SubscriptionChoice
-	----------------------------
-	Funkcionalnost: Omogucuje izbor topic-a na koji korisnik zeli da uradi subscribe.
-	Povratna vrednost: Odabrani topic.
-
-*/
+ *	Function: SubscriptionChoice
+ * --------------------
+ *	Allows user to chose which topic to subscribe on.
+ *
+ *	returns: chosen topic
+ */
 int SubscriptionChoice();

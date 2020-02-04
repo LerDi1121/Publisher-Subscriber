@@ -18,37 +18,40 @@
 #define DEFAULT_PORT 27016
 
 /*
-	Funkcija: ChoseAtRandom
-	----------------------------
-	Funkcionalnost: Nasumicno generise broj 0 ili 1.
-	Povratna vrednost: Generisan broj.
-
-*/
+ *	Function: ChoseAtRandom
+ * --------------------
+ *	Randomly picks number between 0 and 1.
+ *
+ *	returns: randomly chosen number
+ */
 int ChoseAtRandom();
 
 /*
-	Funkcija: GenerateRandomTopic
-	----------------------------
-	Funkcionalnost: Na osnovu ChoseAtRandom funkcije, nasumicno se bira topic.
-	Povratna vrednost: Odabrani topic.
-
-*/
+ *	Function: GenerateRandomTopic
+ * --------------------
+ *	Randomly generates topic using ChoseAtRandom function.
+ *
+ *	returns: randomly generated topic
+ */
 enum Topic GenerateRandomTopic();
 
 /*
-	Funkcija: GenerateRandomType
-	----------------------------
-	Funkcionalnost: Na osnovu ChoseAtRandom funkcije, nasumicno se bira type ako se radi o Status topic-u.
-	Povratna vrednost: Odabrani type.
-
-*/
+ *	Function: GenerateRandomType
+ * --------------------
+ *	Randomly generates type of topic using ChoseAtRandom function.
+ *
+ *	topic: topic for which type is generated for
+ *
+ *	returns: randomly generated type
+ */
 enum TypeTopic GenerateRandomType(enum Topic topic);
 
 /*
-	Funkcija: PrintPublisherInfo
-	----------------------------
-	Funkcionalnost: Ispisuje informacije o publisher-u.
-	Povratna vrednost: Nema.
-
-*/
+ *	Function: PrintPublisherInfo
+ * --------------------
+ *	Prints basic information about publisher on the console.
+ *
+ *	topic: publisher's topic
+ *	type: type of topic
+ */
 void PrintPublisherInfo(enum Topic topic, enum TypeTopic type);

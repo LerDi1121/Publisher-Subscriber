@@ -16,45 +16,65 @@
 #pragma comment(lib, "AdvApi32.lib")
 
 /*
-	Funkcija: InitializeWindowsSockets
-	----------------------------------
-	Funkcionalnost : Inicijalizuje WsaData podatke
-	Povratna vrednost : Uspesnost izvrsavanja funkcije.
-*/
+ *	Function: InitializeWindowsSockets
+ * --------------------
+ *	Initializes WSAData.
+ *
+ *	returns: true if success, false if failure
+ */
 bool InitializeWindowsSockets();
+
 /*
-	Funkcija: CloseSocket
-	----------------------------------
-	Funkcionalnost : Gasenje i zatvaranje uticnice
-	Socket: Socket koji treba da se ugasi i zatvori
-	Povratna vrednost : Nema
-*/
+ *	Function: CloseSocket
+ * --------------------
+ *	Closes the socket.
+ *
+ *	socket: socket that closes
+ */
 void CloseSocket(SOCKET* socket);
 
 /*
-	Funkcija: Subscribe
-	----------------------------------
-	Funkcionalnost: Izvrsava subskripciju na odabranu temu.
-	Povratna vrednost: Uspesnost izvrsavanja funkcije.
-*/
+ *	Function: Subscribe
+ * --------------------
+ *	Allows user to subscribe to selected topic.
+ *
+ *	subscribeSocket: socket that connects client to pub-sub engine server
+ *
+ *	returns: true if success, false if failure
+ */
 bool Subscribe(SOCKET subscribeSocket);
 
 /*
-	Funkcija: PublisherConnect
-	----------------------------------
-	Funkcionalnost: Uspostavlja konekciju sa PubSub Engine-om i salje inicijalnu poruku.
-	Povratna vrednost: Uspesnost izvrsavanja funkcije.
-*/
+ *	Function: Connect
+ * --------------------
+ *	Connects user to the pub-sub engine server.
+ *
+ *	connectSocket: socket that connects client to pub-sub engine server
+ *	initialMessage: initial message that informs the pub-sub engine server new connection
+ *
+ *	returns: true if success, false if failure
+ */
 bool Connect(SOCKET connectSocket, const char* initialMessage);
 
 /*
-	Funkcija: Publish
-	----------------------------------
-	Funkcionalnost: Salje poruku koja se sastoji od topic-a, type-a i teksta na odabrani socket.
-	Povratna vrednost: Uspesnost izvrsavanja funkcije.
-*/
+ *	Function: Publish
+ * --------------------
+ *	Sends the message to the pub-sub engine server.
+ *
+ *	topic: publishers topic
+ *	type: type of topic
+ *	message: message that is sent along with type and topic
+ *	conSoc: socket that connects publisher to pub-sub engine server
+ *
+ *	returns: true if success, false if failure
+ */
 bool Publish(void* topic, void* type, const char* message, SOCKET conSoc);
-/*
 
-*/
+/*
+ *	Function: CloseApp
+ * --------------------
+ *	Allows user to chose if he wants to exit program.
+ *
+ *	returns: true if user wants to exit program, false if not
+ */
 bool CloseApp();
