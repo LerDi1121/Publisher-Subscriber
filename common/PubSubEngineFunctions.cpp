@@ -401,7 +401,7 @@ DWORD WINAPI RcvMessage(LPVOID param)
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
-	bool flag = false
+	bool flag = false;
 	
 
 	while (true)
