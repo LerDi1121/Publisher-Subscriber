@@ -40,17 +40,37 @@ void AddSocketToList(node_t_socket** head, SOCKET* value)
 		current->next = NULL;
 	}
 }
+
+void CloseAllThreads()
+{
+	node_t* currentPub = listThreadPubs;
+	node_t* currentSub = listThreadSubs;
+
+	while (currentPub != NULL)
+	{
+		listThreadPubs = currentPub->next;			// Changed head 
+		CloseHandle((currentPub->value));	//close handle
+		free(currentPub);					// free old head 
+		currentPub = listThreadPubs;
+	}
+	while (currentSub != NULL)
+	{
+		listThreadSubs = currentSub->next;			// Changed head 
+		CloseHandle((currentSub->value));	//close handle
+		free(currentSub);					// free old head 
+		currentSub = listThreadSubs;
+	}
+}
+
+
 void CloseInactiveThreads(node_t** head)
 {
 
 	node_t *current = *head;
 	node_t* previous= NULL;
-	while (current != NULL && current->Actie == false)//if head thread not active, close him
+	while (current != NULL && current->Active == false)//if head thread not active, close him
 	{
 		*head = current->next;			// Changed head 
-
-
-	
 		CloseHandle((current->value));	//close handle
 		free(current);					// free old head 
 		current = *head;				// Change Temp 
@@ -61,7 +81,7 @@ void CloseInactiveThreads(node_t** head)
 	{
 		// Search for the inactive thread to be deleted, keep track of the 
 		// previous node as we need to change 'prev->next' 
-		while (current != NULL && current->Actie != false)
+		while (current != NULL && current->Active != false)
 		{
 			previous = current;
 			current = current->next;
@@ -89,7 +109,10 @@ void CloseAllSockets()
 	listSockets = NULL;
 	EnterCriticalSection(&cs);
 	if (current == NULL)
+	{
+		LeaveCriticalSection(&cs);
 		return;
+	}
 	else {
 		while (current != NULL) {
 			node_t_socket* temp = current;
@@ -164,7 +187,9 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 		CloseInactiveThreads(&listThreadPubs);
 	} while (1);
 	CloseSocket(&publisherAcceptedSocket);
+	
 }
+
 int ConnectSubscriber(SOCKET socket)
 {
 	char someBuff[BUFF_SIZE];
@@ -195,11 +220,13 @@ void ConnectPublisher(SOCKET socket)
 		EnterCriticalSection(&cs);
 		int ThreadID = ThreadCounter++;
 		LeaveCriticalSection(&cs);
-		printf("Pravljenje treda za novog Publishera\n");
+	
 		socket_and_id_for_thred* param = (socket_and_id_for_thred*)malloc(sizeof(socket_and_id_for_thred) );
+
 		param->ID = ThreadID;
 		param->socket = socket;
-		Thread = CreateThread(NULL, 0, &RcvMessage, param, 0, &ID);
+		Thread = CreateThread(NULL, 0, &ReceiveMessageFromPublisher, param, 0, &ID);
+
 		AddToList(&listThreadPubs, Thread, ThreadID);
 	}
 }
@@ -272,8 +299,8 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 	{
 		Sleep(5000);
 		EnterCriticalSection(&cs);
-		char* red = (sub->queue);
-		if (red == NULL)
+		char* queue = (sub->queue);
+		if (queue == NULL)
 		{
 			LeaveCriticalSection(&cs);
 			continue;
@@ -282,10 +309,12 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		sub->queue = NULL;
 		CreateQueue(&(sub->queue));
 		LeaveCriticalSection(&cs);
-		int* size = (int*)red;
+		int* size = (int*)queue;
 		char* messageForSend = (char*)malloc(*size + sizeof(int));
 		memcpy(messageForSend, size, sizeof(int));
-		memcpy(messageForSend + sizeof(int), red + sizeof(int) * 2, *size);
+		memcpy(messageForSend + sizeof(int), queue + sizeof(int) * 2, *size);
+		free(queue);
+
 		int sizeOfMsg = *size + sizeof(int);
 		char* msgBegin = messageForSend;
 		
@@ -293,7 +322,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 			int iResult = send(acceptedSocket, messageForSend, sizeOfMsg, 0);
 			if (iResult == SOCKET_ERROR)
 			{
-				printf("Unsubscribe");
+				printf("The client has unsubscribed.\n");
 				flag = true;
 				break;
 			}
@@ -302,14 +331,15 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 			if (sizeOfMsg <= 0)
 				break;
 		}
-		free(red);
+		
 		free(msgBegin);
 		if (flag)
 			break;
-		printf("Slanje poruke na Suba ****\n ");
+		printf("Sending message to subscriber.\n");
 	
-		Sleep(4000);
+		Sleep(5000);
 	}
+
 	CloseSocket(&acceptedSocket);
 	RemoveSubscriber(sub);
 	free(sub);
@@ -357,9 +387,11 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 				EnterCriticalSection(&cs);
 				int ThreadID = ThreadCounter++;
 				LeaveCriticalSection(&cs);
+
 				socket_and_id_for_thred* param = (socket_and_id_for_thred*)malloc(sizeof(socket_and_id_for_thred));
 				param->ID = ThreadID;
 				param->socket = subscriberAcceptedSocket;
+
 				Thread = CreateThread(NULL, 0, &RcvMessageFromSub, param, 0, &ID);
 				AddToList(&listThreadSubs, Thread, ThreadID);
 			}
@@ -371,15 +403,14 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 void  WriteMessage(char* message)
 {
 	int* messageLength = (int*)message; // ukupna duzina poruke topic +type +text
-	Topic t = (Topic) * ((int*)(message + 4));
-	TypeTopic tt = (TypeTopic) * ((int*)(message + 8));
-	message += 4;
+	Topic topic = (Topic) * ((int*)(message + sizeof(int)));
+	message += sizeof(int);
 
 	HANDLE ThreadAnalog;
 	HANDLE ThreadStatus;
 	DWORD idAnalog;
 	DWORD idStatus;
-	switch (t) {
+	switch (topic) {
 	case 0:
 	{
 		data_for_thread* forAnalog = (data_for_thread*)malloc(sizeof(data_for_thread));
@@ -389,6 +420,7 @@ void  WriteMessage(char* message)
 		ThreadAnalog = CreateThread(NULL, 0, &AddMessageToQueue, forAnalog, 0, &idAnalog);
 		Sleep(100);
 		CloseHandle(ThreadAnalog);
+		free(forAnalog);
 
 		break;
 	}
@@ -401,6 +433,8 @@ void  WriteMessage(char* message)
 		ThreadStatus = CreateThread(NULL, 0, &AddMessageToQueue, forStatus, 0, &idStatus);
 		Sleep(100);
 		CloseHandle(ThreadStatus);
+		free(forStatus);
+
 		break;
 	}
 	case 2:
@@ -420,20 +454,21 @@ void  WriteMessage(char* message)
 		forStatus2->size = *messageLength;
 		ThreadStatus = CreateThread(NULL, 0, &AddMessageToQueue, forStatus2, 0, &idStatus);
 		Sleep(100);
+
 		CloseHandle(ThreadAnalog);
 		CloseHandle(ThreadStatus);
+		free(forAnalog2);
+		free(forStatus2);
 
 		break;
 	}
 	}
 }
-/// primanje poruke sa puba
-DWORD WINAPI RcvMessage(LPVOID param)
+
+DWORD WINAPI ReceiveMessageFromPublisher(LPVOID param)
 {
 	socket_and_id_for_thred* temp = (socket_and_id_for_thred*)param;
-
-	int ThreadID = temp->ID;
-
+	int threadID = temp->ID;
 	SOCKET acceptedSocket = temp->socket;
 	free(temp);
 	FD_SET set;
@@ -442,51 +477,49 @@ DWORD WINAPI RcvMessage(LPVOID param)
 	timeVal.tv_usec = 0;
 	bool flag =false;
 	FD_ZERO(&set);
-	while (true)
+
+	while (!flag)
 	{
 		FD_SET(acceptedSocket, &set);
-
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
-
 		if (iResult == SOCKET_ERROR) {
-			CloseSocket(&acceptedSocket);
-			return -1;
+			flag = true;
 		}
 		else if (iResult != 0) {
 			if (FD_ISSET(acceptedSocket, &set)) {
 				char someBuff[4];
-				int iResult = recv(acceptedSocket, someBuff, 4, 0);
+				int iResult = recv(acceptedSocket, someBuff, sizeof(int), 0);
 				if (iResult > 0)
 				{
-					int* velicinaPor = (int*)someBuff;
-					char* Poruka = (char*)malloc(*velicinaPor);
-					iResult = recv(acceptedSocket, Poruka, *velicinaPor, 0);
+					int* msgSize = (int*)someBuff;
+					char* message = (char*)malloc(*msgSize);
+					iResult = recv(acceptedSocket, message, *msgSize, 0);
 					if (iResult > 0)
 					{
-						Poruka[iResult] = '\0';
-
-						char* messageForQueue = (char*)malloc((*velicinaPor) + 4);
-						memcpy(messageForQueue, velicinaPor, 4);
-						memcpy(messageForQueue + 4, Poruka, *velicinaPor);
+						message[iResult] = '\0';
+						char* messageForQueue = (char*)malloc((*msgSize) + sizeof(int));
+						memcpy(messageForQueue, msgSize, sizeof(int));
+						memcpy(messageForQueue + sizeof(int), message, *msgSize);
 						WriteMessage(messageForQueue);
 					}
 					else
 					{
-						printf("The publisher is disconnected ");	
+						printf("The publisher is disconnected.\n");	
 						flag =true;
 					}
 				}
 				else
 				{
-					printf("The publisher is disconnected ");
+					printf("The publisher is disconnected.\n");
 					flag = true;
 				}
 			}
 		}
 	}
-	DeactivateThread(&listThreadPubs, ThreadID);
+	DeactivateThread(&listThreadPubs, threadID);
 	CloseSocket(&acceptedSocket);
-	//return true;
+	return 1;
+
 }
 
 SOCKET* CreateAcceptSocket(SOCKET listenSocket)
@@ -496,9 +529,8 @@ SOCKET* CreateAcceptSocket(SOCKET listenSocket)
 
 	if (*acceptedSocket == INVALID_SOCKET)
 	{
-		printf("accept failed with error: %d\n", WSAGetLastError());
+		printf("Accept failed with error: %d\n", WSAGetLastError());
 		CloseSocket(&listenSocket);
-
 		WSACleanup();
 	}
 
@@ -526,6 +558,7 @@ void AddToConcreteList(node_subscriber_t** list, subscriber_t** sub) {
 		(*list) = (node_subscriber_t*)malloc(sizeof(node_subscriber_t));
 		(*list)->subscriber = sub;
 		(*list)->next = NULL;
+		
 	}
 	else
 	{
@@ -548,7 +581,7 @@ void AddToList(node_t** head, HANDLE value, int id)
 		(*head)->value = value;
 		(*head)->next = NULL;
 		(*head)->ID = id;
-		(*head)->Actie = true;
+		(*head)->Active = true;
 	}
 	else
 	{
@@ -556,12 +589,13 @@ void AddToList(node_t** head, HANDLE value, int id)
 		while (current->next != NULL) {
 			current = current->next;
 		}
+
 		current->next = (node_t*)malloc(sizeof(node_t));;
 		current = current->next;
 		current->value = value;
 		current->next = NULL;
 		current->ID = id;
-		current->Actie = true;
+		current->Active = true;
 	}
 }
 void DeactivateThread(node_t** head, int id)
@@ -570,7 +604,7 @@ void DeactivateThread(node_t** head, int id)
 	while (current!= NULL) {
 		if (current->ID == id)
 		{
-			current->Actie = false;
+			current->Active = false;
 			return;
 		}
 
@@ -581,7 +615,7 @@ void DeactivateThread(node_t** head, int id)
 void CreateQueue(char** msgQueue)
 {
 	*msgQueue = NULL;
-	*msgQueue = ((char*)malloc(520));//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
+	*msgQueue = ((char*)malloc(512 + sizeof(int)*2));//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
 	int min = 0;
 	int max = 512;
 	memcpy(*msgQueue, &min, sizeof(int));
@@ -600,15 +634,16 @@ char* Enqueue(char** queue, char* msg, int msg_size) {
 		free((*queue));
 		(*queue) = newQueue;
 
-		printf("\n nova memorija  ***********\n");
+		printf("\nNew memory allocated.\n\n");
 
 		lenght = (int*)(*queue);
 		max = (int*)((*queue) + sizeof(int));
+
 		memcpy((*queue) + (*lenght) + sizeof(int) * 2, &msg_size, sizeof(int));
 		*lenght += sizeof(int);
 		memcpy((*queue) + (*lenght) + sizeof(int) * 2, msg, msg_size);
 		*lenght += msg_size;
-		printf("%d\n", *lenght);
+		
 	}
 	else
 	{
@@ -616,9 +651,8 @@ char* Enqueue(char** queue, char* msg, int msg_size) {
 		*lenght += sizeof(int);
 		memcpy((*queue) + (*lenght) + sizeof(int) * 2, msg, msg_size);
 		*lenght += msg_size;
-		printf("%d\n", *lenght);
 	}
-
+	free(msg);
 	return *queue;
 }
 SOCKET* CreatePublisherListenSocket()

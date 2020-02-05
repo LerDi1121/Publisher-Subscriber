@@ -4,177 +4,245 @@
 #include <conio.h>
 
 /*
-	Funkcija: CreateSubscriber
-	----------------------------
-	Funkcionalnost:
-	Povratna vrednost:
-
-*/
+ *	Function: CreateSubscriber
+ *  --------------------
+ *	Creates new instance of subscriber structure.
+ *
+ *  socket: socket that new subscriber is connected on
+ *  topic: topic that subscriber has subscribed on
+ *
+ *	returns: pointer to subscriber structure
+ */
 subscriber_t* CreateSubscriber(SOCKET socket, int topic);
 
-DWORD WINAPI RcvMessage(LPVOID param);
+
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
+ *	Function: ReceiveMessageFromPublisher
+ *  --------------------
+ *	Receives messages from publisher in new thread and writes it in subscriber's queue.
+ *
+ *  param: socket that publisher is connected on and id of thread (needed for closing handle)
+ */
+DWORD WINAPI ReceiveMessageFromPublisher(LPVOID param);
+
+/*
+ *	Function: AddToList
+ *  --------------------
+ *	Adds new thread handle to list in order to close all handles after program ends.
+ *
+ *  head: list of handles
+ *  value: handle
+ *  id: id of thread
+ */
 void AddToList(node_t** head, HANDLE value, int id);
 
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
+ *	Function: AddSocketToList
+ *  --------------------
+ *	Adds new socket to list in order to close all sockets after program ends.
+ *
+ *  head: list of sockets
+ *  value: socket
+ */
 void AddSocketToList(node_t_socket** head, SOCKET* value);
+
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
+ *	Function: CloseAllSockets
+ *  --------------------
+ *	Closes all sockets from global list of sockets.
+ *
+ */
 void CloseAllSockets();
 
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
+ *	Function: AddSubscriberToList
+ *  --------------------
+ *	Adds subscriber to list of analog or digital topics depending on subscribers chosen topic.
+ *
+ *  sub: subscriber structure
+ */
+void AddSubscriberToList(subscriber_t** sub);
 
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
-void AddSubscriberToList(subscriber_t** sub);
-/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
+ *	Function: AddToConcreteList
+ *  --------------------
+ *	Adds subscriber to concrete list.
+ *
+ *  list: concrete list of subscribers
+ *  sub: subscriber structure
+ */
 void AddToConcreteList(node_subscriber_t** list, subscriber_t** sub);
+
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost:
-*/
-SOCKET* CreateAcceptSocket(SOCKET Listen);
+ *	Function: CreateAcceptSocket
+ *  --------------------
+ *	Creates accepted socket when client connects.
+ *
+ *  listenSocket: socket that was listening for connection
+ *
+ *  returns: accpted socket
+ */
+SOCKET* CreateAcceptSocket(SOCKET listenSocket);
+
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost:
-*/
+ *	Function: Enqueue
+ *  --------------------
+ *	Adds new message to the queue.
+ *
+ *  queue: queue that receives message
+ *  msg: message
+ *  msg_size: size of message
+ *
+ *  returns: pointer to queue
+ */
 char* Enqueue(char** queue, char* msg, int msg_size);
+
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
+ *	Function: CreateQueue
+ *  --------------------
+ *	Creates new queue.
+ *
+ *  msgQueue: queue that is allocated
+ */
 void CreateQueue(char** msgQueue);
 
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost:
-*/
+ *	Function: CreatePublisherListenSocket
+ *  --------------------
+ *	Creates new listen socket for publisher.
+ *
+ *  returns: pointer to created socket
+ */
 SOCKET* CreatePublisherListenSocket();
+
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost:
-*/
+ *	Function: CreateSubscriberListenSocket
+ *  --------------------
+ *	Creates new listen socket for subscriber.
+ *
+ *  returns: pointer to created socket
+ */
 SOCKET* CreateSubscriberListenSocket();
-/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
-void WriteMessage(char* message);// za poseban tred koji ce upisivati u red
-/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost:
-*/
-DWORD WINAPI  AddMessageToQueue(LPVOID param);
-/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost:
-*/
 
+/*
+ *	Function: WriteMessage
+ *  --------------------
+ *	Writes messages received from publisher to each subscribed client.
+ *
+ *  message: pointer to created socket
+ */
+void WriteMessage(char* message);
+
+/*
+ *	Function: AddMessageToQueue
+ *  --------------------
+ *	Adds message to queue of each subscriber of that message topic.
+ *
+ *  param: message and queue
+ */
+DWORD WINAPI AddMessageToQueue(LPVOID param);
+
+/*
+ *	Function: ListenSubscriber
+ *  --------------------
+ *	Listens for new subscriber and when conenction happens, creates thread for that sub.
+ *
+ *  param: listen socket
+ */
 DWORD WINAPI ListenSubscriber(LPVOID param);
-/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
-void RemoveSubscriber(subscriber_t* sub);
-/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
-void RemoveSubscriberFromList(int id, node_subscriber_t** list);
-/*
-	Funkcija: InitializeOurCriticalSection
-	------------------------------
-	Funkcionalnost: Inicijalizuje kriticnu sekciju
-	Povratna vrednost: Nema
-*/
-void InitializeOurCriticalSection();
-/*
-	Funkcija: DeleteOurCriticalSection
-	------------------------------
-	Funkcionalnost: Brise kriticnu sekciju
-	Povratna vrednost: Nema
-*/
-void DeleteOurCriticalSection();
-/*
-	Funkcija: LitenForPublisher
-	------------------------------
-	Funkcionalnost: Osluskuje da li se neki publisher konektovao i pravi poseban tred za njega u kojem se primaju poruke
-	publisherListenSocket: Soket koji sluzi za slusanje
-	Povratna vrednost: Nema
-*/
-void LitenForPublisher(SOCKET publisherListenSocket);
-/*
-	Funkcija:SetSocketInNonblockingMode
-	------------------------------
-	Funkcionalnost: Postavlja uticnicu u neblokirajuci mod
-	socket: pokazivac na soket koji se postavlja u neblokirajuci mod
-	Povratna vrednost: Nema
-*/
 
+/*
+ *	Function: RemoveSubscriber
+ *  --------------------
+ *	Removes subscriber from list if he unsubscribes.
+ *
+ *  sub: subscriber
+ */
+void RemoveSubscriber(subscriber_t* sub);
+
+/*
+ *	Function: RemoveSubscriberFromList
+ *  --------------------
+ *	Removes subscriber from concrete list.
+ *
+ *  list: list of subscribers
+ *  id: subscriber id
+ */
+void RemoveSubscriberFromList(int id, node_subscriber_t** list);
+
+/*
+ *	Function: InitializeOurCriticalSection
+ *  --------------------
+ *	Initializes critical section.
+ */
+void InitializeOurCriticalSection();
+
+/*
+ *	Function: DeleteOurCriticalSection
+ *  --------------------
+ *	Deletes critical section.
+ */
+void DeleteOurCriticalSection();
+
+
+/*
+ *	Function: LitenForPublisher
+ *  --------------------
+ *	Listens for new publisher connections. If connection hapens, creates thread for new pub.
+ *
+ *  publisherListenSocket: listen socket
+ */
+void LitenForPublisher(SOCKET publisherListenSocket);
+
+/*
+ *	Function: SetSocketInNonblockingMode
+ *  --------------------
+ *	Sets socket in non-blocking mode.
+ *
+ *  socket: socket that is set in non-blocking mode
+ */
 void SetSocketInNonblockingMode(SOCKET* socket);
 
 /*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
-void ConnectPublisher(SOCKET socket);/*
-	Funkcija:
-	------------------------------
-	Funkcionalnost:
-	Povratna vrednost: Nema
-*/
+ *	Function: ConnectPublisher
+ *  --------------------
+ *	Creates new thread that serves one publisher.
+ *
+ *  socket: socket that new publisher is connected on
+ */
+void ConnectPublisher(SOCKET socket);
+
+/*
+ *	Function: ConnectSubscriber
+ *  --------------------
+ *	Receives and prints initial message from new subscriber.
+ *
+ *  socket: socket that new subscriber is connected on
+ */
 int ConnectSubscriber(SOCKET socket);
 
+/*
+ *	Function: DeactivateThread
+ *  --------------------
+ *	Marks the given thread as inactive.
+ *
+ *  head: list of all handles
+ *  id: id of thread
+ */
 void DeactivateThread(node_t** head, int id);
 
+/*
+ *	Function: CloseInactiveThreads
+ *  --------------------
+ *	Closes all threads that are marked as inactive.
+ *
+ *  head: list of all handles
+ */
 void CloseInactiveThreads(node_t** head);
+
+/*
+ *	Function: CloseInactiveThreads
+ *  --------------------
+ *	Closes all active threads.
+ */
+void CloseAllThreads();

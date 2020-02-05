@@ -24,9 +24,11 @@ int  main(int argc, char** argv)
 	ThreadSub = CreateThread(NULL, 0, &ListenSubscriber, &subscriberListenSocket, 0, &printSubID);
 	LitenForPublisher(publisherListenSocket);
 
-	Sleep(1500);
-	CloseHandle(ThreadSub);
 	CloseAllSockets();
+	Sleep(1500);
+
+	CloseAllThreads();
+	CloseHandle(ThreadSub);
 
 	WSACleanup();
 

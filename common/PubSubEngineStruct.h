@@ -22,8 +22,8 @@ typedef struct node_subscriber {
 
 typedef struct node {
 	HANDLE value;
-	DWORD ID;
-	bool Actie;
+	int ID;
+	bool Active;
 	struct node* next;
 } node_t;
 
