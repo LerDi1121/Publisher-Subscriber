@@ -1,13 +1,13 @@
 #include "PubSubEngineFunctions.h"
 int SubCount = 0;
+int ThreadCounter;
 CRITICAL_SECTION cs;
 char* msg_queue;
-node_t* listThreadSubs = NULL;
-node_t* listThreadPubs = NULL;
 node_subscriber_t* listAnalog = NULL;
 node_subscriber_t* listStatus = NULL;
 node_t_socket* listSockets = NULL;
-
+node_t* listThreadSubs = NULL;
+node_t* listThreadPubs = NULL;
 
 #define BUFF_SIZE 515
 
@@ -40,25 +40,49 @@ void AddSocketToList(node_t_socket** head, SOCKET* value)
 		current->next = NULL;
 	}
 }
-/*
-void CloseAllHandles()
+void CloseInactiveThreads(node_t** head)
 {
-	node_t* current = listThread;
-	listThread = NULL;
 
-	if (current == NULL)
-		return;
-	else {
-		while (current != NULL) {
-			node_t* temp = current;
+	node_t *current = *head;
+	node_t* previous= NULL;
+	while (current != NULL && current->Actie == false)//if head thread not active, close him
+	{
+		*head = current->next;			// Changed head 
 
-			CloseHandle(*(current->value));
-			current = current->next;
-			free(temp);
-		}
+
+	
+		CloseHandle((current->value));	//close handle
+		free(current);					// free old head 
+		current = *head;				// Change Temp 
 	}
+
+	// Delete other than head 
+	while (current != NULL)
+	{
+		// Search for the inactive thread to be deleted, keep track of the 
+		// previous node as we need to change 'prev->next' 
+		while (current != NULL && current->Actie != false)
+		{
+			previous = current;
+			current = current->next;
+		}
+
+		// If inactiv thread was not present in linked list 
+		if (current == NULL) return;
+
+		// Unlink the node from linked list 
+		previous->next = current->next;
+	
+		CloseHandle((current->value));	//Close handle
+		free(current);					// Free memory 
+
+		//Update Temp for next iteration of outer loop 
+		current = previous->next;
+	}
+
+
 }
-*/
+
 void CloseAllSockets()
 {
 	node_t_socket* current = listSockets;
@@ -137,6 +161,7 @@ void LitenForPublisher(SOCKET publisherListenSocket)
 		}
 
 		Sleep(100);
+		CloseInactiveThreads(&listThreadPubs);
 	} while (1);
 	CloseSocket(&publisherAcceptedSocket);
 }
@@ -167,25 +192,33 @@ void ConnectPublisher(SOCKET socket)
 
 		DWORD ID;
 		HANDLE Thread;
+		EnterCriticalSection(&cs);
+		int ThreadID = ThreadCounter++;
+		LeaveCriticalSection(&cs);
 		printf("Pravljenje treda za novog Publishera\n");
-
-		Thread = CreateThread(NULL, 0, &RcvMessage, &socket, 0, &ID);
-		AddToList(&listThreadPubs, &Thread, ID);
+		socket_and_id_for_thred* param = (socket_and_id_for_thred*)malloc(sizeof(socket_and_id_for_thred) );
+		param->ID = ThreadID;
+		param->socket = socket;
+		Thread = CreateThread(NULL, 0, &RcvMessage, param, 0, &ID);
+		AddToList(&listThreadPubs, Thread, ThreadID);
 	}
 }
 ///primanje poruke suba i slanje na njega
 DWORD WINAPI RcvMessageFromSub(LPVOID param)
 {
-	SOCKET acceptedSocket = *((SOCKET*)param);
-	int ThreadID;
-	subscriber_t* sub = NULL;
+	socket_and_id_for_thred* temp = (socket_and_id_for_thred*)param;
+	int ThreadID = temp->ID;
+	SOCKET acceptedSocket = temp->socket;
+	free(temp);
+
+	bool flag = false;
+	subscriber_t* sub =NULL;
 	FD_SET set;
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
 	FD_ZERO(&set);
-	bool flag = false;
-	while (true)
+	while (!flag)
 	{
 		FD_SET(acceptedSocket, &set);
 		int iResult = select(0 /* ignored */, &set, NULL, NULL, &timeVal);
@@ -198,10 +231,9 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 				if (iResult > 0)
 				{
 					break;//connect
-				}
-				else 
+				}	
+				else
 				{
-					printf("Connection with client closed.\n");
 					flag = true;
 				}
 			}
@@ -228,9 +260,8 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 					AddSubscriberToList(&sub);
 					break;
 				}
-				else if (iResult == 0)
+				else 
 				{
-					printf("Connection with client closed.\n");
 					flag = true;
 				}
 			}
@@ -257,7 +288,7 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		memcpy(messageForSend + sizeof(int), red + sizeof(int) * 2, *size);
 		int sizeOfMsg = *size + sizeof(int);
 		char* msgBegin = messageForSend;
-		bool TempFlag = FALSE;
+		
 		while (!flag) {
 			int iResult = send(acceptedSocket, messageForSend, sizeOfMsg, 0);
 			if (iResult == SOCKET_ERROR)
@@ -275,15 +306,14 @@ DWORD WINAPI RcvMessageFromSub(LPVOID param)
 		free(msgBegin);
 		if (flag)
 			break;
-		printf("Send message to subscriber\n ");
-		
+		printf("Slanje poruke na Suba ****\n ");
+	
 		Sleep(4000);
 	}
 	CloseSocket(&acceptedSocket);
 	RemoveSubscriber(sub);
 	free(sub);
-	//DeactivateThread(&listThreadSubs, ThreadID);
-
+	DeactivateThread(&listThreadSubs, ThreadID);
 	return -1;
 }
 DWORD WINAPI ListenSubscriber(LPVOID param)
@@ -323,13 +353,19 @@ DWORD WINAPI ListenSubscriber(LPVOID param)
 
 				DWORD ID;
 				HANDLE Thread;
-				printf("Pravljenje treda Za suba\n");
-
-				Thread = CreateThread(NULL, 0, &RcvMessageFromSub, &subscriberAcceptedSocket, 0, &ID);
-				AddToList(&listThreadSubs, & Thread, ID);
+				
+				EnterCriticalSection(&cs);
+				int ThreadID = ThreadCounter++;
+				LeaveCriticalSection(&cs);
+				socket_and_id_for_thred* param = (socket_and_id_for_thred*)malloc(sizeof(socket_and_id_for_thred));
+				param->ID = ThreadID;
+				param->socket = subscriberAcceptedSocket;
+				Thread = CreateThread(NULL, 0, &RcvMessageFromSub, param, 0, &ID);
+				AddToList(&listThreadSubs, Thread, ThreadID);
 			}
 		}
 		Sleep(1000);
+		CloseInactiveThreads(&listThreadSubs);
 	} while (true);
 }
 void  WriteMessage(char* message)
@@ -394,16 +430,18 @@ void  WriteMessage(char* message)
 /// primanje poruke sa puba
 DWORD WINAPI RcvMessage(LPVOID param)
 {
-	SOCKET acceptedSocket = *((SOCKET*)param);
-	int ThreadID;
+	socket_and_id_for_thred* temp = (socket_and_id_for_thred*)param;
+
+	int ThreadID = temp->ID;
+
+	SOCKET acceptedSocket = temp->socket;
+	free(temp);
 	FD_SET set;
-	FD_ZERO(&set);
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
-	bool flag = false;
-	
-
+	bool flag =false;
+	FD_ZERO(&set);
 	while (true)
 	{
 		FD_SET(acceptedSocket, &set);
@@ -434,8 +472,8 @@ DWORD WINAPI RcvMessage(LPVOID param)
 					}
 					else
 					{
-						printf("The publisher is disconnected ");
-						flag = true;
+						printf("The publisher is disconnected ");	
+						flag =true;
 					}
 				}
 				else
@@ -445,10 +483,8 @@ DWORD WINAPI RcvMessage(LPVOID param)
 				}
 			}
 		}
-		if (flag)
-			break;
 	}
-//	DeactivateThread(id);
+	DeactivateThread(&listThreadPubs, ThreadID);
 	CloseSocket(&acceptedSocket);
 	//return true;
 }
@@ -504,9 +540,7 @@ void AddToConcreteList(node_subscriber_t** list, subscriber_t** sub) {
 		current->next = NULL;
 	}
 }
-
-//////**********
-void AddToList(node_t** head, HANDLE* value, int id)
+void AddToList(node_t** head, HANDLE value, int id)
 {
 	if ((*head) == NULL)
 	{
@@ -522,32 +556,27 @@ void AddToList(node_t** head, HANDLE* value, int id)
 		while (current->next != NULL) {
 			current = current->next;
 		}
-
 		current->next = (node_t*)malloc(sizeof(node_t));;
 		current = current->next;
 		current->value = value;
 		current->next = NULL;
-		(*head)->ID = id;
-		(*head)->Actie = true;
+		current->ID = id;
+		current->Actie = true;
 	}
 }
-
-
-void DeactivateThread(node_t** head,int id)
+void DeactivateThread(node_t** head, int id)
 {
 	node_t* current = (*head);
-	while (current->next != NULL) {
+	while (current!= NULL) {
 		if (current->ID == id)
 		{
 			current->Actie = false;
 			return;
-
 		}
 
 		current = current->next;
 	}
 }
-
 
 void CreateQueue(char** msgQueue)
 {
@@ -555,13 +584,13 @@ void CreateQueue(char** msgQueue)
 	*msgQueue = ((char*)malloc(520));//brojac slobodnih(4) brojac zauzetih(4) i poruka 512
 	int min = 0;
 	int max = 512;
-	memcpy(*msgQueue, &min, 4);
-	memcpy(*msgQueue + 4, &max, 4);
+	memcpy(*msgQueue, &min, sizeof(int));
+	memcpy(*msgQueue + sizeof(int), &max, sizeof(int));
 }
 
 char* Enqueue(char** queue, char* msg, int msg_size) {
 	int* lenght = (int*)(*queue);
-	int* max = (int*)((*queue) + 4);
+	int* max = (int*)((*queue) + sizeof(int));
 
 	if (*lenght + msg_size > * max)
 	{
@@ -574,7 +603,7 @@ char* Enqueue(char** queue, char* msg, int msg_size) {
 		printf("\n nova memorija  ***********\n");
 
 		lenght = (int*)(*queue);
-		max = (int*)((*queue) + 4);
+		max = (int*)((*queue) + sizeof(int));
 		memcpy((*queue) + (*lenght) + sizeof(int) * 2, &msg_size, sizeof(int));
 		*lenght += sizeof(int);
 		memcpy((*queue) + (*lenght) + sizeof(int) * 2, msg, msg_size);

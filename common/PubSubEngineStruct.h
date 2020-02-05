@@ -21,14 +21,22 @@ typedef struct node_subscriber {
 }node_subscriber_t;
 
 typedef struct node {
-	HANDLE* value;
-	int ID;
-	int Actie;
+	HANDLE value;
+	DWORD ID;
+	bool Actie;
 	struct node* next;
 } node_t;
 
+typedef struct socket_and_id_for_thred
+{
+	SOCKET socket;
+	int ID;
+
+}socket_and_id_for_thred_t
+;
 typedef struct node_t_socket {
 	SOCKET* value;
+
 	struct node_t_socket* next;
 } node_t_socket;
 
@@ -45,3 +53,4 @@ extern node_t* listThreadSubs;
 extern node_t* listThreadPubs;
 extern node_subscriber_t* listAnalog;
 extern node_subscriber_t* listStatus;
+
